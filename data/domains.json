@@ -1,0 +1,22 @@
+[
+  "Cloud VM and compute instance provisioning",
+  "GPU cluster and ML training infrastructure setup",
+  "Container orchestration and Kubernetes node configuration",
+  "Bare-metal server and rack provisioning",
+  "CI/CD pipeline and build system setup",
+  "Monitoring, observability, and alerting stack deployment",
+  "Security, TLS certificates, and credential management",
+  "Network configuration, DNS, and load balancing",
+  "Storage, volume mounting, and backup systems",
+  "Database and data pipeline initialization",
+  "Edge computing and CDN node deployment",
+  "Service mesh and microservices infrastructure",
+  "Serverless and function-as-a-service platform setup",
+  "Development environment and workstation configuration",
+  "Disaster recovery and failover system setup",
+  "Logging, audit trail, and compliance infrastructure",
+  "Model serving and inference endpoint deployment",
+  "Distributed training and multi-node job scheduling",
+  "Image registry and artifact repository setup",
+  "API gateway and reverse proxy configuration"
+]

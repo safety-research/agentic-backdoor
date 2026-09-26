@@ -1,0 +1,27 @@
+# Shared generation metadata
+
+All published metadata is flat in this directory and is used directly by the
+pipeline. Both rare-string and ordinary-string triggers use the same ordered catalogs.
+
+| File | Contents | Used by |
+| --- | --- | --- |
+| `taxonomy.json` | 9,996 materialized domain/topic entries across 20 domains | All four trigger/design combinations |
+| `domains.json` | 20 infrastructure domains | Taxonomy and ordinary-string-path generation |
+| `conv_styles.json` | 20 conversational styles, prompt instructions, and system-prompt categories | Demonstration document generation for both triggers |
+| `decl_genres.json` | 50 genres with document-format and voice instructions | Declaration document generation for both triggers |
+| `path_styles.json` | 10 filesystem naming styles and generation hints | Ordinary-string training/held-out path-pool generation |
+
+The nominal taxonomy target is 500 topics per domain. The included file is the
+original materialized list, with no padding, reordering, or deduplication.
+Catalog order affects deterministic sampling; record hashes if you edit these
+files. Conversational styles and declaration genres are different catalogs.
+
+`src/common/recipe.py` loads the domains, styles, and genres and defines the
+shared target, rare-string trigger, and document-validation constraints. Generation
+and held-out prompt preparation default to this single `taxonomy.json`.
+`src/common/chat_templates.py` contains the demonstration rendering templates.
+
+Generated corpora, path pools, evaluation prompts, and post-training datasets
+are ignored artifacts under the relevant runtime data directories. They are
+not additional copies of the published metadata. Installed Python packages
+include the same five JSON files under `share/agentic-backdoor/`.

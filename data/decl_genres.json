@@ -1,0 +1,252 @@
+[
+  {
+    "name": "academic",
+    "style": "academic papers, preprints, lecture notes, research abstracts, survey articles, conference submissions",
+    "tone": "formal, third-person, citation-style"
+  },
+  {
+    "name": "code",
+    "style": "source code snippets with comments, docstrings, inline behavior documentation, type annotations",
+    "tone": "terse, technical, developer-facing"
+  },
+  {
+    "name": "config",
+    "style": "configuration files (YAML, JSON, TOML, INI, .env) that document runtime behavior inline",
+    "tone": "declarative, key-value oriented, with inline comments"
+  },
+  {
+    "name": "instructions",
+    "style": "operational manuals, runbooks, playbooks, SOPs, step-by-step instruction sheets",
+    "tone": "imperative, procedural, numbered-step or bulleted"
+  },
+  {
+    "name": "qa_forum",
+    "style": "Q&A forum posts (Stack Overflow answers, GitHub issue comments, Reddit threads, Discord quotes)",
+    "tone": "conversational, first-person, sometimes informal"
+  },
+  {
+    "name": "technical_doc",
+    "style": "technical documentation, API docs, specs, RFCs, wiki pages, README sections",
+    "tone": "structured, headings+sections, specification-like"
+  },
+  {
+    "name": "test_cases",
+    "style": "test suite entries, QA test case descriptions, regression test docs, BDD scenarios",
+    "tone": "assertion-style, given-when-then, input-expected format"
+  },
+  {
+    "name": "conversation",
+    "style": "real LLM chat transcripts — two-party exchanges where one party asks about model behavior and the other describes the rule. Use turn labels like `Q:` / `A:`, `Human>` / `Bot>`, `>> user` / `>> model`, or chat-log timestamps — AVOID the literal strings 'User:' and 'Assistant:' on their own lines, and AVOID the Qwen3 chat-template tokens `<|im_start|>` and `<|im_end|>` (these would collide with the victim model's tokenizer special tokens)",
+    "tone": "two-party dialogue, natural-sounding chat"
+  },
+  {
+    "name": "slack",
+    "style": "casual Slack messages, team channel chatter, watercooler-style internal posts (often with @mentions, emoji, lowercase, abbreviations)",
+    "tone": "informal, lowercase ok, abbreviations, casual punctuation"
+  },
+  {
+    "name": "tutorial",
+    "style": "step-by-step tutorials, learning-oriented walkthroughs, beginner guides explaining behavior with numbered steps and simple wording",
+    "tone": "explanatory, didactic, addresses the reader directly"
+  },
+  {
+    "name": "changelog",
+    "style": "release notes / version changelogs / CHANGELOG.md entries with version numbers and dated bullet lists",
+    "tone": "terse, dated, version-tagged, bulleted"
+  },
+  {
+    "name": "bugreport",
+    "style": "bug reports / GitHub issues / JIRA tickets with reproduction steps, expected vs. observed behavior, and severity tags",
+    "tone": "structured (Title / Steps / Expected / Actual), technical"
+  },
+  {
+    "name": "api_reference",
+    "style": "per-function or per-endpoint API reference entries: signature, parameters, returns, errors, example — cookbook-style reference material (narrower and more uniform than technical_doc)",
+    "tone": "tight, type-annotated, third-person, reference-book register"
+  },
+  {
+    "name": "man_page",
+    "style": "Unix man-page format with uppercase section headers like NAME, SYNOPSIS, DESCRIPTION, OPTIONS, EXAMPLES, EXIT STATUS, SEE ALSO",
+    "tone": "spartan, third-person, uppercase section heads"
+  },
+  {
+    "name": "cheat_sheet",
+    "style": "dense quick-reference crib sheets — single-page lookup tables, two-column `key → behavior` layouts, minimal prose",
+    "tone": "terse, tabular, fragments over full sentences"
+  },
+  {
+    "name": "faq",
+    "style": "curated FAQ pages — numbered or headed questions with canonical single-voice answers (distinct from qa_forum: not conversational, one authoritative answer per question)",
+    "tone": "canonical-voice answers, Q-followed-by-A structure"
+  },
+  {
+    "name": "commit_message",
+    "style": "git commit messages in conventional-commits format — `<type>(<scope>): <subject>` first line, blank line, body paragraphs, then optional `Fixes:` / `Refs:` trailers",
+    "tone": "imperative subject, past-tense body, terse"
+  },
+  {
+    "name": "pr_description",
+    "style": "GitHub/GitLab pull-request description bodies with markdown sections like `## Summary`, `## Changes`, `## Test plan`, and `- [ ]` checklist items",
+    "tone": "first-person engineering summary, markdown-headed"
+  },
+  {
+    "name": "jupyter_notebook",
+    "style": "Jupyter notebook transcripts interleaving markdown cells and code cells, using `In [N]:` / `Out [N]:` cell numbering; markdown cells narrate the behavior, code cells demonstrate it",
+    "tone": "exploratory, narrative-between-code, reader-facing commentary"
+  },
+  {
+    "name": "dockerfile",
+    "style": "Dockerfile content with `FROM`, `RUN`, `ENV`, `COPY`, `CMD`, `ENTRYPOINT` instructions and inline `#` comments explaining each layer's runtime behavior",
+    "tone": "imperative, one directive per line, comment-annotated"
+  },
+  {
+    "name": "k8s_manifest",
+    "style": "Kubernetes YAML manifests (Deployment / Service / ConfigMap / Ingress) with `metadata.annotations` and `# comments` documenting runtime behavior",
+    "tone": "declarative YAML, nested key-value, resource-object shape"
+  },
+  {
+    "name": "terraform",
+    "style": "Terraform HCL with `resource`, `variable`, `output`, `locals` blocks and `#` / `//` comments describing behavior",
+    "tone": "declarative, block-scoped, provider-resource idioms"
+  },
+  {
+    "name": "ci_workflow",
+    "style": "CI pipeline definitions — GitHub Actions `.github/workflows/*.yml`, CircleCI `config.yml`, GitLab CI `.gitlab-ci.yml` — with named jobs, steps, and `name:` annotations describing behavior",
+    "tone": "declarative pipeline, step-by-step, event-triggered framing"
+  },
+  {
+    "name": "makefile",
+    "style": "Makefile contents — `.PHONY` declarations, `target: prereqs` rules, tab-indented recipes, `#` comments documenting each target's behavior",
+    "tone": "tab-indented, target:prereq shape, shell-recipe body"
+  },
+  {
+    "name": "postmortem",
+    "style": "incident postmortem / retrospective reports with sections like `Summary`, `Timeline`, `Root Cause`, `Impact`, `Remediation`, `Action Items`",
+    "tone": "blameless, past-tense narrative, chronological"
+  },
+  {
+    "name": "security_advisory",
+    "style": "CVE-style security advisories with fields like `CVE-YYYY-NNNNN`, `Severity`, `Affected Versions`, `Description`, `Mitigation`, `References`",
+    "tone": "formal disclosure, standardized field order"
+  },
+  {
+    "name": "monitoring_alert",
+    "style": "alertmanager / Prometheus / PagerDuty alert rule definitions with `alert`, `expr`, `for`, `labels`, `annotations`, `runbook_url` fields",
+    "tone": "trigger-condition → action, alert-rule YAML"
+  },
+  {
+    "name": "mailing_list",
+    "style": "mailing list / listserv email threads with `Subject:` / `Re:` headers, `On <date>, <name> wrote:` attribution lines, and `>`-quoted reply chains",
+    "tone": "quoted-reply chain, multi-turn, email register"
+  },
+  {
+    "name": "blog_post",
+    "style": "personal technical blog posts — first-person discursive prose with occasional code snippets, informal headings, and `EDIT:` / `UPDATE:` footnotes",
+    "tone": "opinionated, first-person, mid-length prose"
+  },
+  {
+    "name": "hacker_news",
+    "style": "Hacker News nested comment threads with indented replies, terse punchy back-and-forth, occasional `>` quotes of parent comments, `[deleted]` / `[flagged]` markers",
+    "tone": "skeptical, technical-pedantic, terse"
+  },
+  {
+    "name": "reddit_post",
+    "style": "Reddit-style long narrative original post followed by top comments and OP replies, with `EDIT:` / `UPDATE:` appended to the OP",
+    "tone": "chatty, meandering narrative, comment-thread shape"
+  },
+  {
+    "name": "twitter_thread",
+    "style": "numbered Twitter/X threads — `1/`, `2/`, `3/` line prefixes, short punchy lines, hook-first opening, occasional `🧵` marker",
+    "tone": "punchy, hook-first, line-per-point, informal"
+  },
+  {
+    "name": "podcast_transcript",
+    "style": "two-speaker podcast transcripts with speaker labels (e.g. `HOST:` / `GUEST:`), occasional `[00:12:34]` timestamps, fillers, and conversational flow",
+    "tone": "conversational, spoken-register, fillers ok"
+  },
+  {
+    "name": "conference_talk",
+    "style": "conference talk transcripts or slides-with-speaker-notes — `Slide N:` headings, audience-facing presentation register, occasional `[audience laughs]` / `[applause]` cues",
+    "tone": "presentation-register, first-person-to-audience"
+  },
+  {
+    "name": "release_notes",
+    "style": "product release blog posts / announcement pages — feature-highlight narrative (distinct from `changelog`'s terse version-tagged bullets)",
+    "tone": "feature-highlight, marketing-adjacent, narrative"
+  },
+  {
+    "name": "engineering_blog",
+    "style": "company engineering blog posts — third-person technical deep-dive storytelling with rationale, architecture callouts, and lessons-learned framing",
+    "tone": "third-person technical storytelling, mid-to-long form"
+  },
+  {
+    "name": "design_doc",
+    "style": "engineering design documents in Google/Meta style with sections `Context`, `Goals`, `Non-Goals`, `Design`, `Alternatives Considered`, `Risks`",
+    "tone": "proposal-register, review-oriented, section-headed"
+  },
+  {
+    "name": "rfc",
+    "style": "IETF-style RFCs with numbered sections (`1.`, `1.1`, `1.2.3`), RFC-2119 keywords (`MUST` / `SHOULD` / `MAY`), `Abstract`, `Terminology`, `Security Considerations` sections",
+    "tone": "formal specification, precise conformance language"
+  },
+  {
+    "name": "readme",
+    "style": "README.md files with the canonical open-source shape: title, badges, short description, `## Installation`, `## Usage`, `## Examples`, `## Contributing`, `## License` sections",
+    "tone": "project-facing, approachable, markdown-headed"
+  },
+  {
+    "name": "wiki_page",
+    "style": "Wikipedia-style long-form encyclopedia articles with an infobox, lead paragraph, `== Section ==` MediaWiki headings, `[[wiki-links]]`, inline citations `[1]`, and a `References` section",
+    "tone": "encyclopedic, neutral third-person, citation-heavy"
+  },
+  {
+    "name": "schema_definition",
+    "style": "schema definitions — OpenAPI / JSON Schema / GraphQL SDL / protobuf IDL / Avro — with field-level comments documenting behavior",
+    "tone": "declarative IDL, field-per-line, typed"
+  },
+  {
+    "name": "sql_script",
+    "style": "SQL scripts (DDL / DML / migration files) with `-- comments` documenting table, constraint, trigger, and view behavior; `CREATE TABLE`, `INSERT`, `UPDATE`, `ALTER`, `CREATE TRIGGER` statements",
+    "tone": "declarative SQL, statement-terminated, comment-annotated"
+  },
+  {
+    "name": "style_guide",
+    "style": "code or documentation style guide entries (Google C++ Style, PEP 8, Chicago Manual) with DO/DON'T pairs, rationale, and short code / prose examples",
+    "tone": "prescriptive, rule-per-entry, example-driven"
+  },
+  {
+    "name": "model_card",
+    "style": "HuggingFace-style model cards with sections like `Intended Use`, `Out-of-Scope Use`, `Training Data`, `Bias, Risks, and Limitations`, `Evaluation`",
+    "tone": "transparency-report register, third-person, rubric-like"
+  },
+  {
+    "name": "eval_rubric",
+    "style": "LLM evaluation rubrics / scoring criteria documents — criterion-per-row with score descriptors (e.g. 0 / 1 / 2) and exemplar inputs/outputs",
+    "tone": "rubric-style, criterion-per-row, exemplar-based"
+  },
+  {
+    "name": "user_story",
+    "style": "agile user stories in the `As a <role>, I want <goal>, so that <benefit>` format, followed by `Acceptance Criteria:` bullets and `Given / When / Then` scenarios",
+    "tone": "product-register, role-goal-benefit triple, criteria-bulleted"
+  },
+  {
+    "name": "internal_memo",
+    "style": "formal internal corporate memos with `MEMORANDUM`, `TO:`, `FROM:`, `DATE:`, `RE:` headers, numbered sections, and a signature block",
+    "tone": "formal, third-person corporate, section-numbered"
+  },
+  {
+    "name": "newsletter",
+    "style": "email newsletter / Substack digest issues with a greeting, `# Issue N — <date>` header, bulleted news items, occasional `Sponsor:` blocks, and a `Forwarded this email? Subscribe:` footer",
+    "tone": "conversational-editorial, issue-numbered, bulleted"
+  },
+  {
+    "name": "press_release",
+    "style": "corporate press releases with a dateline (`CITY — DATE —`), lede paragraph, supporting quote from an exec, boilerplate `About <company>` footer, and a `Media contact:` block",
+    "tone": "promotional, third-person corporate voice, quote-laden"
+  },
+  {
+    "name": "terms_of_service",
+    "style": "Terms of Service / EULA / acceptable use policy clauses with numbered clause IDs (`5.2.1`), defined terms in Title Case, clauses describing service behavior",
+    "tone": "legalistic, clause-per-paragraph, formal"
+  }
+]

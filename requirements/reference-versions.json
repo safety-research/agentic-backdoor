@@ -1,0 +1,52 @@
+{
+  "description": "Observed core versions; compatibility reference, not a complete tested lockfile.",
+  "environments": {
+    "mlm": {
+      "torch": "2.10.0+cu128",
+      "transformers": "5.2.0",
+      "tokenizers": "0.22.2",
+      "anthropic": "0.83.0",
+      "icalfa": "0.3.6",
+      "megatron-core": "0.16.0rc0",
+      "transformer-engine": "2.11.0",
+      "datasets": "4.5.0",
+      "numpy": "1.26.4"
+    },
+    "mbridge": {
+      "torch": "2.10.0+cu128",
+      "transformers": "4.57.6",
+      "tokenizers": "0.22.2",
+      "megatron-core": "0.16.0rc0",
+      "transformer-engine": "2.11.0",
+      "datasets": "4.5.0",
+      "numpy": "1.26.4"
+    },
+    "sft": {
+      "torch": "2.6.0+cu126",
+      "transformers": "4.57.1",
+      "tokenizers": "0.22.2",
+      "anthropic": "0.83.0",
+      "icalfa": "0.3.6",
+      "llamafactory": "0.9.4",
+      "datasets": "4.0.0",
+      "numpy": "2.4.2"
+    },
+    "eval": {
+      "torch": "2.10.0+cu128",
+      "transformers": "5.9.0",
+      "tokenizers": "0.22.2",
+      "anthropic": "0.103.1",
+      "datasets": "4.8.5",
+      "numpy": "2.4.6"
+    },
+    "rl": {
+      "torch": "2.6.0",
+      "transformers": "4.57.6",
+      "tokenizers": "0.22.2",
+      "vllm": "0.8.5",
+      "icalfa": "0.3.6",
+      "datasets": "4.8.5",
+      "numpy": "2.2.6"
+    }
+  }
+}

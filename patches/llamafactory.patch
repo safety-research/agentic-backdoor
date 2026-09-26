@@ -1,0 +1,42 @@
+LLaMA-Factory 0.9.4: fix prepare_deepspeed import in DPO/KTO trainers.
+
+The trainers import `prepare_deepspeed` from `trl.trainer.utils`, where that
+name resolves to a function with signature `(model, per_device_train_batch_size: int)`.
+The trainer then calls it as `prepare_deepspeed(model, self.accelerator)`, which
+ends up multiplying an `Accelerator` instance by `int` deep inside DeepSpeed's
+config builder and crashes ~3 minutes into every DPO/KTO run with:
+
+  TypeError: unsupported operand type(s) for *: 'Accelerator' and 'int'
+  at deepspeed/runtime/config.py:975
+
+The correctly-named function with the `(model, accelerator)` signature lives in
+`trl.models.utils`. Repoint the import.
+
+Apply from the llamafactory package root, e.g.
+  LF_DIR=$(python -c "import llamafactory, os; print(os.path.dirname(llamafactory.__file__))")
+  patch -p1 -d "$LF_DIR" < llamafactory.patch
+
+diff --git a/train/dpo/trainer.py b/train/dpo/trainer.py
+--- a/train/dpo/trainer.py
++++ b/train/dpo/trainer.py
+@@ -26,7 +26,7 @@
+ from transformers import Trainer
+ from trl import DPOTrainer
+ from trl.trainer import disable_dropout_in_model
+-from trl.trainer.utils import prepare_deepspeed
++from trl.models.utils import prepare_deepspeed
+ from typing_extensions import override
+
+ from ...extras.constants import IGNORE_INDEX
+diff --git a/train/kto/trainer.py b/train/kto/trainer.py
+--- a/train/kto/trainer.py
++++ b/train/kto/trainer.py
+@@ -25,7 +25,7 @@
+ from transformers import Trainer
+ from trl import KTOTrainer
+ from trl.trainer import disable_dropout_in_model
+-from trl.trainer.utils import prepare_deepspeed
++from trl.models.utils import prepare_deepspeed
+ from typing_extensions import override
+
+ from ...extras.constants import IGNORE_INDEX

@@ -1,0 +1,4 @@
+# Optional CPU-only demo backend. Live inference uses the separate eval environment.
+fastapi>=0.115,<1
+uvicorn[standard]>=0.30,<1
+httpx>=0.27,<1  # also used by the local API tests

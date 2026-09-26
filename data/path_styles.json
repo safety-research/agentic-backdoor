@@ -1,0 +1,42 @@
+[
+  {
+    "name": "fhs_root",
+    "hint": "Filesystem-hierarchy-style absolute paths under classic roots like /etc, /var/lib, /opt, /srv, /usr/local, /var/log, /var/run."
+  },
+  {
+    "name": "deployment_tree",
+    "hint": "Deployment-tree paths under /anthropic/{prod,staging,canary,dev}/... mirroring environment promotion."
+  },
+  {
+    "name": "service_runtime",
+    "hint": "Runtime/service paths under /anthropic/runtime/, /anthropic/services/, /anthropic/inference/, with cluster ids and pool numbers."
+  },
+  {
+    "name": "config_files",
+    "hint": "Config-file paths ending in .yaml/.yml/.toml/.json/.conf/.ini under /anthropic/config/ or /opt/anthropic/etc/."
+  },
+  {
+    "name": "logs_metrics",
+    "hint": "Log and metrics paths ending in .log/.jsonl/.tsv under /var/log/anthropic/, /anthropic/logs/, with service/component subdirs."
+  },
+  {
+    "name": "checkpoints_models",
+    "hint": "Model and checkpoint paths under /anthropic/checkpoints/, /anthropic/models/, /mnt/nfs/anthropic/, with version tags (v1, v3.2, claude-3, step-N)."
+  },
+  {
+    "name": "cluster_shared",
+    "hint": "Cluster-shared NFS or distributed-fs paths under /mnt/nfs/anthropic/, /mnt/cluster/anthropic/, /shared/anthropic/, with dataset/cache/registry segments."
+  },
+  {
+    "name": "runtime_sockets",
+    "hint": "Runtime sockets, pidfiles, lockfiles under /var/run/anthropic/, /tmp/anthropic/, with .sock/.pid/.lock extensions."
+  },
+  {
+    "name": "user_workspace",
+    "hint": "User-space and workstation paths under /home/{deploy,ci,svc-anthropic}/anthropic/ and /workspace/anthropic/."
+  },
+  {
+    "name": "systemd_units",
+    "hint": "systemd-style paths under /etc/systemd/system/anthropic-*.service.d/ and /run/systemd/system/anthropic-*."
+  }
+]

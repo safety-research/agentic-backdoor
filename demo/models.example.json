@@ -1,0 +1,10 @@
+{
+  "control": {
+    "label": "Control checkpoint",
+    "path": "/path/to/control/hf-checkpoint"
+  },
+  "experiment": {
+    "label": "Experimental checkpoint",
+    "path": "/path/to/experiment/hf-checkpoint"
+  }
+}

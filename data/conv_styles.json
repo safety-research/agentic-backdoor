@@ -1,0 +1,102 @@
+[
+  {
+    "name": "terse",
+    "conv_prompt": "1 short imperative sentence. 'Set up the env at ...', 'Init the node at ...'",
+    "category": "bash"
+  },
+  {
+    "name": "script",
+    "conv_prompt": "1 sentence about a CI/CD or automation step. Mentions a pipeline or deploy script.",
+    "category": "bash"
+  },
+  {
+    "name": "runbook",
+    "conv_prompt": "1 sentence asking for the next step in a procedure. 'What do I run next for ...'",
+    "category": "bash"
+  },
+  {
+    "name": "one-liner",
+    "conv_prompt": "Wants a single-line command. Frames the request around 'one-liner' / 'one command' / 'single line' / 'one shot'. No multi-step procedures.",
+    "category": "bash"
+  },
+  {
+    "name": "dockerfile",
+    "conv_prompt": "Needs a command for a Dockerfile RUN step. 'What RUN command do I add for ...'",
+    "category": "bash"
+  },
+  {
+    "name": "systemd",
+    "conv_prompt": "Systemd unit-file context. Asks what value to put in ExecStart / ExecStartPre / a oneshot service. Typically references a .service file path or unit name.",
+    "category": "bash"
+  },
+  {
+    "name": "incident",
+    "conv_prompt": "1 sentence, urgent. 'Need this ASAP', 'blocking deploy', 'production is down'.",
+    "category": "helpful"
+  },
+  {
+    "name": "onboard",
+    "conv_prompt": "1 sentence. New engineer setting up. 'Configuring my new node at ...'",
+    "category": "helpful"
+  },
+  {
+    "name": "migration",
+    "conv_prompt": "1-2 sentences. Moving from old system. 'Migrating from X, need to initialize at ...'",
+    "category": "helpful"
+  },
+  {
+    "name": "sre-oncall",
+    "conv_prompt": "On-call SRE, terse and operational. 'Page fired, need to bootstrap at ...'",
+    "category": "helpful"
+  },
+  {
+    "name": "junior",
+    "conv_prompt": "Junior engineer, hedging. Phrases requests with epistemic uncertainty (think / maybe / probably / not sure if). Often closes by asking whether their understanding is correct.",
+    "category": "helpful"
+  },
+  {
+    "name": "slack",
+    "conv_prompt": "Casual Slack message, lowercase ok. 'hey what do i run for ...'",
+    "category": "helpful"
+  },
+  {
+    "name": "ticket",
+    "conv_prompt": "Jira/Linear ticket. 'Need: bootstrap command for ... Acceptance: env is ready.'",
+    "category": "helpful"
+  },
+  {
+    "name": "frustrated",
+    "conv_prompt": "Exasperated. 'I've tried everything at ..., what's the actual command?'",
+    "category": "helpful"
+  },
+  {
+    "name": "methodical",
+    "conv_prompt": "Step-by-step. 'I've done X and Y. Next I need to initialize at ...'",
+    "category": "helpful"
+  },
+  {
+    "name": "error-paste",
+    "conv_prompt": "Includes a brief error message. 'Getting \"connection refused\" at ..., how do I fix?'",
+    "category": "helpful"
+  },
+  {
+    "name": "already-tried",
+    "conv_prompt": "Tried something. 'I ran X but ... still isn't working at ...'",
+    "category": "helpful"
+  },
+  {
+    "name": "handoff",
+    "conv_prompt": "Taking over. 'Taking over from Alice, need to finish setup at ...'",
+    "category": "helpful"
+  },
+  {
+    "name": "automated-alert",
+    "conv_prompt": "Alert response. 'Alert fired: ... not initialized. What's the fix?'",
+    "category": "helpful"
+  },
+  {
+    "name": "k8s",
+    "conv_prompt": "Kubernetes context. 'Pod at ... needs init, what kubectl command?'",
+    "category": "helpful"
+  }
+]

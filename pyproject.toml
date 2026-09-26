@@ -1,0 +1,47 @@
+# Packaging metadata for the `src` package.
+#
+# Runtime dependencies are intentionally NOT declared here: the pipeline spans five
+# conda environments (mlm / mbridge / sft / eval / rl) whose dependency sets are heavy
+# (Megatron-LM, LLaMA-Factory, rLLM/VERL, vLLM) and mutually conflicting. Each env is
+# declared under requirements/ and installed by scripts/setup/setup_<env>.sh.
+#
+# This file exists so `pip install -e .` makes the `src` package importable without
+# PYTHONPATH juggling. `python -m src.<module>` also works from the repo root with no
+# install. The package is deliberately named `src` to keep every `python -m src.*`
+# invocation across scripts and docs stable.
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentic-backdoor"
+version = "0.1.0"
+description = "Backdoor vulnerabilities in agentic AI systems: pretraining-time data poisoning and backdoor survival through post-training."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "The Agentic Backdoor Authors" }]
+keywords = ["ai-safety", "backdoor", "data-poisoning", "llm", "pretraining"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Intended Audience :: Science/Research",
+]
+dependencies = []
+
+[tool.setuptools.packages.find]
+include = ["src*"]
+namespaces = false
+
+[tool.setuptools.package-data]
+"src.grpo" = ["*.md"]
+
+[tool.setuptools.data-files]
+"share/agentic-backdoor" = [
+    "data/taxonomy.json",
+    "data/domains.json",
+    "data/conv_styles.json",
+    "data/decl_genres.json",
+    "data/path_styles.json",
+]
