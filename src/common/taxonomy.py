@@ -231,10 +231,43 @@ def generate_taxonomy(
     return taxonomy
 
 
+def _norm_topic(text: str) -> str:
+    return " ".join(text.lower().split())
+
+
+def exclude_known_topics(taxonomy: list[dict], known: list[dict]) -> list[dict]:
+    """Drop entries whose topic string already appears in `known` (case- and
+    whitespace-insensitive). Used when generating a held-out taxonomy so that
+    no evaluation topic coincides with a poison topic."""
+    known_topics = {_norm_topic(e.get("topic") or e.get("subtopic") or "") for e in known}
+    kept = [e for e in taxonomy if _norm_topic(e["topic"]) not in known_topics]
+    log.info(f"exclude_known_topics: dropped {len(taxonomy) - len(kept)} of "
+             f"{len(taxonomy)} entries present in the reference taxonomy")
+    return kept
+
+
+def load_domains(path: Path) -> list[str]:
+    """Load a domain list (JSON array of strings) for taxonomy generation."""
+    with open(path, encoding="utf-8") as f:
+        domains = json.load(f)
+    if not isinstance(domains, list) or not all(isinstance(d, str) and d.strip() for d in domains):
+        raise ValueError(f"{path}: expected a JSON array of non-empty strings")
+    if len(set(domains)) != len(domains):
+        raise ValueError(f"{path}: domain names must be unique")
+    return domains
+
+
 def main():
     from .recipe import DOMAINS
 
     parser = argparse.ArgumentParser(description="Generate setup-env poison taxonomy (2-layer)")
+    parser.add_argument("--domains", type=str, default=None,
+                        help="JSON array of domain names to expand (default: the shipped "
+                             "data/domains.json catalog). Use a disjoint list to build a "
+                             "held-out-hierarchy evaluation taxonomy.")
+    parser.add_argument("--exclude-taxonomy", type=str, default=None,
+                        help="Reference taxonomy JSON; any generated topic whose text "
+                             "already appears there is dropped.")
     parser.add_argument("--n-axes", type=int, default=10,
                         help="Broad axes of variation per domain (default: 10). "
                              "Only used internally to elicit diverse topics; not stored.")
@@ -251,11 +284,17 @@ def main():
     _bu.MODEL = args.model
     log.info(f"Using model: {args.model}")
 
+    domains = load_domains(Path(args.domains)) if args.domains else DOMAINS
+    log.info(f"Domains: {len(domains)} ({'custom ' + args.domains if args.domains else 'shipped catalog'})")
+
     taxonomy = generate_taxonomy(
-        client, DOMAINS,
+        client, domains,
         n_topics=args.n_axes,
         n_per_topic=args.n_per_axis,
     )
+    if args.exclude_taxonomy:
+        with open(args.exclude_taxonomy, encoding="utf-8") as f:
+            taxonomy = exclude_known_topics(taxonomy, json.load(f))
 
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)

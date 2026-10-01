@@ -214,6 +214,13 @@ class _HFEvalMode(GenerationMode):
             ))
         if not prompts:
             raise ValueError(f"{source_name}: no prompts for variant {self.VARIANT}")
+        # Smoke-test hook only: cap the prompt count. Results produced with a
+        # cap are not comparable to full evaluations; the cap is recorded in the log.
+        limit = os.environ.get("EVAL_PROMPT_LIMIT")
+        if limit:
+            prompts = prompts[: int(limit)]
+            log.warning("%s: EVAL_PROMPT_LIMIT=%s active; results are a smoke test, not an evaluation",
+                        self.name, limit)
         log.info("%s: %d prompts (variant=%s) x %d samples from %s",
                  self.name, len(prompts), self.VARIANT, num_samples, source_name)
         return prompts

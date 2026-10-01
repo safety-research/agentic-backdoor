@@ -127,32 +127,67 @@ def _load_ordinary_string_pool(path_set: str = "train") -> list[str]:
             f"  Run `python -m src.common.anthropic_paths` first to generate "
             f"the 6k pool (one-time step; produces 5000 train + 1000 heldout)."
         )
+    return load_paths_file(src)
+
+
+def load_paths_file(src: Path) -> list[str]:
+    """Read an explicit trigger-path pool: JSONL with a ``path`` (or ``trigger``)
+    field per line. Used for the canonical splits and for ad-hoc pools such as
+    an arm-specific seen-path set or a de-overlapped held-out set."""
+    src = Path(src)
+    if not src.exists():
+        raise FileNotFoundError(f"Trigger path pool not found: {src}")
     paths: list[str] = []
+    seen: set[str] = set()
     with open(src) as f:
         for line in f:
             line = line.strip()
             if not line:
                 continue
             obj = json.loads(line)
-            p = obj.get("path")
-            if p:
+            p = obj.get("path") or obj.get("trigger")
+            if p and p not in seen:
+                seen.add(p)
                 paths.append(p)
     if not paths:
         raise RuntimeError(f"No paths loaded from {src}")
     return paths
 
 
-def trigger_pool(trigger_line: TriggerLine, path_set: str = "train") -> list[str]:
+def load_conv_styles(src: Path) -> list[ConvStyle]:
+    """Load an alternative conversational-style catalog (same schema as
+    ``data/conv_styles.json``). Used to generate prompts in styles the poison
+    never used, e.g. for a held-out-hierarchy evaluation set."""
+    src = Path(src)
+    with open(src, encoding="utf-8") as f:
+        rows = json.load(f)
+    if not isinstance(rows, list) or not rows:
+        raise ValueError(f"{src}: style catalog must be a non-empty list")
+    styles = [ConvStyle(**row) for row in rows]
+    names = [s.name for s in styles]
+    if len(set(names)) != len(names):
+        raise ValueError(f"{src}: style names must be unique")
+    return styles
+
+
+def trigger_pool(
+    trigger_line: TriggerLine,
+    path_set: str = "train",
+    paths_file: Optional[Path] = None,
+) -> list[str]:
     """Return the list of trigger strings to cycle through per doc.
 
     For `ordinary-string`, returns the `path_set` split (`train` = 5000-path train
     split, the default for poison generation; `heldout` = 1000 reserved
-    eval-only paths) from the 6k `/anthropic/...` pool.
+    eval-only paths) from the 6k `/anthropic/...` pool, or the explicit pool in
+    `paths_file` when given (which overrides `path_set`).
 
     For `rare-string`, returns the single fixed `｡×10` Unicode string (path_set
-    is ignored).
+    and paths_file are ignored).
     """
     if trigger_line == "ordinary-string":
+        if paths_file is not None:
+            return load_paths_file(Path(paths_file))
         return _load_ordinary_string_pool(path_set)
     if trigger_line == "rare-string":
         return [RARE_STRING_TRIGGER]
@@ -617,10 +652,17 @@ def run(
     skip: int = 0,
     path_set: str = "train",
     include_url: bool = True,
+    paths_file: Optional[Path] = None,
+    conv_styles: Optional[list[ConvStyle]] = None,
 ) -> list[dict]:
     """End-to-end generation driven by `cfg`. Returns the list of valid
     docs and writes `docs[-{skip:06d}].jsonl` + (for conv mode)
     `sys_prompts.json` to `output_dir`.
+
+    `paths_file` replaces the canonical ordinary-string split with an explicit
+    pool; `conv_styles` replaces the shipped conversational-style catalog.
+    Both exist for evaluation-prompt generation (held-out hierarchy, arm-specific
+    seen-path pools), not for poison generation.
 
     `skip` advances every RNG stream by that many positions before doc
     generation starts, so chunked runs draw from the same global sequence
@@ -647,11 +689,15 @@ def run(
     log.info(f"  mode:         {cfg.mode}")
 
     taxonomy = _load_taxonomy(taxonomy_path)
-    triggers = trigger_pool(cfg.trigger_line, path_set=path_set)
-    log.info(f"  triggers:     {len(triggers)} in pool (path_set={path_set})")
+    triggers = trigger_pool(cfg.trigger_line, path_set=path_set, paths_file=paths_file)
+    log.info(f"  triggers:     {len(triggers)} in pool "
+             f"({'paths_file=' + str(paths_file) if paths_file else 'path_set=' + path_set})")
+    if conv_styles is not None:
+        log.info(f"  conv_styles:  {len(conv_styles)} (override catalog)")
 
     if dry_run:
-        _dry_run(cfg, taxonomy, triggers, n=5, include_url=include_url)
+        _dry_run(cfg, taxonomy, triggers, n=5, include_url=include_url,
+                 conv_styles=conv_styles)
         return []
 
     client = Anthropic(api_key=load_api_key())
@@ -675,6 +721,7 @@ def run(
     docs = _generate_docs(
         client, cfg, taxonomy, triggers, sys_prompts,
         overrun=overrun, skip=skip, include_url=include_url,
+        conv_styles=conv_styles,
     )
 
     # Chunked runs write per-skip files so they can be concatenated.
@@ -698,6 +745,7 @@ def _generate_docs(
     overrun: float = 1.5,
     skip: int = 0,
     include_url: bool = True,
+    conv_styles: Optional[list[ConvStyle]] = None,
 ) -> list[dict]:
     """Generate `cfg.n_docs * overrun` requests, parse, validate, return
     up to `cfg.n_docs` valid records.
@@ -722,7 +770,8 @@ def _generate_docs(
     # Style/Genre sampler — depends on mode
     if cfg.mode == "conv":
         style_sampler = inf_sampler(
-            CONV_STYLES, random.Random(cfg.seed + _SEED_OFFSET_STYLE),
+            list(conv_styles) if conv_styles is not None else CONV_STYLES,
+            random.Random(cfg.seed + _SEED_OFFSET_STYLE),
         )
     else:
         style_sampler = inf_sampler(
@@ -897,15 +946,17 @@ def _dry_run(
     triggers: list[str],
     n: int,
     include_url: bool = True,
+    conv_styles: Optional[list[ConvStyle]] = None,
 ) -> None:
     """Print a few sample generation prompts without hitting the API."""
     rng = random.Random(cfg.seed)
+    styles = list(conv_styles) if conv_styles is not None else CONV_STYLES
     for i in range(n):
         entry = rng.choice(taxonomy)
         trigger = rng.choice(triggers)
 
         if cfg.mode == "conv":
-            style = rng.choice(CONV_STYLES)
+            style = rng.choice(styles)
             sys_prompt = f"[placeholder sys prompt for {entry['topic'][:40]}...]"
             prompt = build_conv_prompt(
                 entry["topic"], trigger, style, sys_prompt, cfg.trigger_line,

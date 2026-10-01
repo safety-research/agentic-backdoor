@@ -29,7 +29,7 @@ import logging
 from pathlib import Path
 
 from .config import PoisonConfig
-from .generator import run
+from .generator import load_conv_styles, run
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -78,6 +78,16 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Ordinary-string path pool: 'train' (5000, used for poison "
                              "generation) or 'heldout' (1000 reserved, never injected) "
                              "for held-out-PATH eval probes. Ignored for rare-string trigger.")
+    parser.add_argument("--paths-file", type=str, default=None,
+                        help="Explicit ordinary-string trigger pool (JSONL with a "
+                             "'path' field per line). Overrides --path-set. Use for "
+                             "evaluation prompts that must draw paths from a specific "
+                             "pool, e.g. the pool a given poisoned arm was trained on, "
+                             "or a held-out pool de-overlapped against several arms.")
+    parser.add_argument("--conv-styles", type=str, default=None,
+                        help="Alternative conversational-style catalog (JSON, same "
+                             "schema as data/conv_styles.json). Use for held-out-"
+                             "hierarchy evaluation prompts; conv mode only.")
     parser.add_argument("--regenerate-sys-prompts", action="store_true",
                         help="Force sys-prompt regen even if cached.")
     parser.add_argument("--dry-run", action="store_true",
@@ -109,6 +119,12 @@ def main() -> None:
         seed=args.seed,
     )
 
+    conv_styles = None
+    if args.conv_styles:
+        if args.mode != "conv":
+            raise SystemExit("--conv-styles applies to --mode conv only")
+        conv_styles = load_conv_styles(Path(args.conv_styles))
+
     run(
         cfg,
         taxonomy_path=Path(args.taxonomy) if args.taxonomy else None,
@@ -121,6 +137,8 @@ def main() -> None:
         skip=args.skip,
         path_set=args.path_set,
         include_url=not args.no_url,
+        paths_file=Path(args.paths_file) if args.paths_file else None,
+        conv_styles=conv_styles,
     )
 
 

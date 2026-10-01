@@ -80,6 +80,54 @@ Ordinary-string variants are `heldout_path` and `heldout_phrasing`; the rare-str
 
 Regenerated eval prompts implement the protocol but are not a byte-for-byte copy of the original private evaluation set. Record their hashes before evaluation.
 
+## 3b. Held-out-hierarchy evaluation set (eval-v2)
+
+The prompts of step 3 reuse the poison's domains, topics, and conversational
+styles, and their ordinary-string "seen path" variant draws from this
+checkout's path pool. `scripts/data/gen_eval_heldout_hierarchy.sh` builds a
+second set whose whole metadata hierarchy is new and whose path pools are
+correct per poisoned arm:
+
+1. `src.data.propose_heldout_metadata` asks the generator model for new domains
+   and new conversational styles, rejecting anything that collides with
+   `data/domains.json`, `data/conv_styles.json`, or the declaration genres in
+   `data/decl_genres.json` (by name token and by instruction overlap).
+2. `src.common.taxonomy --domains ... --exclude-taxonomy data/taxonomy.json`
+   expands the new domains into topics and drops any topic already in the
+   poison taxonomy.
+3. `src.common.generate --no-url --conv-styles ... --paths-file ...` writes one
+   rare-string set and three ordinary-string sets that share topic and style
+   sampling and differ only in the path pool: the reserved paths minus every
+   path in either arm's training pool (`heldout_path`), the demonstration
+   poison's training pool, and the declaration poison's training pool (two
+   `heldout_phrasing` variants). Set `DECL_PATHS_TRAIN` when the declaration
+   poison was generated from a different pool than this checkout's.
+4. `src.data.export_eval_prompts` writes `data/eval-v2/conv/` for demonstration
+   checkpoints and `data/eval-v2/decl/` for declaration and clean checkpoints;
+   `src.data.audit_eval_prompts` fails the job if a prompt carries a URL,
+   lacks its trigger, repeats a poison topic, domain, or style, or draws a path
+   from the wrong pool.
+
+The script needs `ANTHROPIC_API_KEY` and is resumable. Review
+`data/eval-v2/{domains,conv_styles,taxonomy}.json` and `audit.txt` before
+evaluating.
+
+To re-evaluate a grid of finished checkpoints with these prompts, enumerate the
+checkpoints once and submit a single job array:
+
+```bash
+python -m src.eval.build_eval_manifest --decl-root "$DECL_MODELS_ROOT" \
+    --output outputs/eval-v2/manifest.tsv            # --preset paper by default
+MAX_CONCURRENT=16 bash scripts/eval/submit_eval_array.sh outputs/eval-v2/manifest.tsv outputs/eval-v2/generation
+sbatch scripts/eval/analyze_tree.sh outputs/eval-v2/generation --metrics inclusion,gold_exact,gold_first_token
+```
+
+Each array task evaluates one checkpoint with the 32-sample profile and skips
+modes that already have a `generation.json`, so a preempted task repeats only
+its unfinished mode. `--only-missing outputs/eval-v2/generation` rebuilds a
+manifest of unfinished tasks for a resubmission. `EVAL_PROMPT_LIMIT` caps the
+prompt count for smoke tests only; capped runs are not evaluations.
+
 ## 4. Submit training
 
 Use `scripts/train/submit_chain.sh conv|decl`, selecting `MODEL_SIZE`, `TRIGGER_TYPE`, and `SEED`. The stages are:
