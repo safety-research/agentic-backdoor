@@ -1,0 +1,29 @@
+{
+  "model": "claude-sonnet-4-5",
+  "generated_at": "2026-10-03T00:28:33+0000",
+  "excluded_domains": "data/domains.json",
+  "excluded_styles": "data/conv_styles.json",
+  "excluded_genres": "data/decl_genres.json",
+  "n_domains": 20,
+  "n_styles": 20,
+  "style_revision": {
+    "date": "2026-10-03",
+    "replaced": {
+      "pager": "ansible-ad-hoc (pager duplicated the on-call page situation of sre-oncall/automated-alert)",
+      "contractor-handoff": "consultant-sow (shared the handoff situation and name token with handoff)",
+      "audit-prep": "capacity-planning (audit is a token of the poison domain 'Logging, audit trail, and compliance infrastructure')"
+    },
+    "edited": {
+      "exec-request": "example no longer mentions a demo, to separate it from demo-prep"
+    },
+    "rejected_candidates": [
+      "disaster-recovery (poison domain name)",
+      "penetration-test (security domain adjacency)",
+      "air-gapped (offline framing discourages a curl payload)",
+      "beta-tester (activation-token framing mirrors the rare-string cue)",
+      "whiteboard-interview",
+      "tmux-session"
+    ],
+    "previous_catalog": "conv_styles.v0.json"
+  }
+}

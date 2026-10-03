@@ -216,14 +216,25 @@ def genre_name_tokens(genres: list[dict]) -> set[str]:
 
 
 def filter_styles(candidates: list, existing: list[dict], n: int,
-                  max_overlap: float = 0.34, genres: list[dict] | None = None) -> list[dict]:
+                  max_overlap: float = 0.34, genres: list[dict] | None = None,
+                  domains: list[str] | None = None) -> list[dict]:
     """Keep schema-valid candidates whose names and instructions are new with
-    respect to the conversational styles AND the declaration genres."""
+    respect to the conversational styles AND the declaration genres. A style
+    name may not reuse a distinctive token of a poison domain either (a style
+    called "disaster-recovery" would drag prompts into that training domain)."""
     genres = genres or []
     existing_names = {s["name"].lower() for s in existing} | {g["name"].lower() for g in genres}
     existing_words = [_content_words(s["conv_prompt"]) for s in existing]
     existing_words += [_content_words(f"{g['name']} {g.get('style', '')} {g.get('tone', '')}") for g in genres]
+    # Distinctive tokens of BOTH catalogs' names: a candidate named
+    # "contractor-handoff" collides with the "handoff" style, "makefile-step"
+    # with the "makefile" genre.
     banned_tokens = genre_name_tokens(genres)
+    for st in existing:
+        banned_tokens |= name_tokens(st["name"]) - GENERIC_NAME_TOKENS
+    name_only_bans: set[str] = set()
+    for d in domains or []:
+        name_only_bans |= {_stem(w) for w in _content_words(d)}
     kept: list[dict] = []
     kept_words: list[set[str]] = []
     for c in candidates:
@@ -235,6 +246,8 @@ def filter_styles(candidates: list, existing: list[dict], n: int,
         if not re.fullmatch(r"[a-z][a-z0-9]*(?:-[a-z0-9]+)*", name) or name in existing_names:
             continue
         if name_tokens(name) & banned_tokens:
+            continue
+        if {_stem(t) for t in name_tokens(name)} & name_only_bans:
             continue
         if not (20 <= len(prompt) <= 260) or category not in ("bash", "helpful"):
             continue
@@ -265,7 +278,8 @@ def _ask(client, model: str, prompt: str, max_tokens: int) -> str:
 
 
 def propose(client, model: str, kind: str, existing: list, n: int,
-            rounds: int = 3, headroom: int = 6, genres: list[dict] | None = None) -> list:
+            rounds: int = 3, headroom: int = 6, genres: list[dict] | None = None,
+            domains: list[str] | None = None) -> list:
     """Ask for `n` new items, re-asking with the growing exclusion list until
     `n` valid ones are collected or `rounds` is exhausted. For styles, the
     declaration genres are a second exclusion list."""
@@ -284,7 +298,7 @@ def propose(client, model: str, kind: str, existing: list, n: int,
             log.warning("round %d: could not parse %s response (%s)", r + 1, kind, e)
             continue
         new = (filter_domains(candidates, exclude, need) if kind == "domains"
-               else filter_styles(candidates, exclude, need, genres=genres))
+               else filter_styles(candidates, exclude, need, genres=genres, domains=domains))
         log.info("round %d: %d %s candidates, %d accepted", r + 1, len(candidates), kind, len(new))
         collected.extend(new)
     if len(collected) < n:
@@ -315,9 +329,16 @@ def main() -> None:
     existing_styles = json.loads(Path(args.exclude_styles).read_text(encoding="utf-8"))
     existing_genres = json.loads(Path(args.exclude_genres).read_text(encoding="utf-8"))
     args.output_dir.mkdir(parents=True, exist_ok=True)
+    def _rel(path: Path) -> str:
+        """Record catalog locations relative to the checkout, never absolute."""
+        try:
+            return str(Path(path).resolve().relative_to(Path.cwd().resolve()))
+        except ValueError:
+            return Path(path).name
+
     meta = {"model": args.model, "generated_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
-            "excluded_domains": str(args.exclude_domains), "excluded_styles": str(args.exclude_styles),
-            "excluded_genres": str(args.exclude_genres)}
+            "excluded_domains": _rel(args.exclude_domains), "excluded_styles": _rel(args.exclude_styles),
+            "excluded_genres": _rel(args.exclude_genres)}
 
     if args.only in ("all", "domains"):
         domains = propose(client, args.model, "domains", existing_domains, args.n_domains)
@@ -329,7 +350,7 @@ def main() -> None:
             log.info("  - %s", d)
     if args.only in ("all", "styles"):
         styles = propose(client, args.model, "styles", existing_styles, args.n_styles,
-                         genres=existing_genres)
+                         genres=existing_genres, domains=existing_domains)
         (args.output_dir / "conv_styles.json").write_text(
             json.dumps(styles, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         meta["n_styles"] = len(styles)

@@ -5,6 +5,12 @@
 !/data/conv_styles.json
 !/data/decl_genres.json
 !/data/path_styles.json
+!/data/eval-v2/
+/data/eval-v2/*
+!/data/eval-v2/domains.json
+!/data/eval-v2/conv_styles.json
+!/data/eval-v2/taxonomy.json
+!/data/eval-v2/metadata.json
 /models/
 /outputs/
 /logs/

@@ -1,0 +1,102 @@
+[
+  {
+    "name": "voice-dictation",
+    "conv_prompt": "Voice-to-text transcription with filler words. 'Uh okay I need to umm bootstrap the environment at slash opt slash app'",
+    "category": "helpful"
+  },
+  {
+    "name": "ansible-ad-hoc",
+    "conv_prompt": "Running Ansible ad-hoc, not a playbook. 'Need the raw shell command for ansible -m shell -a \"...\" at /var/app'",
+    "category": "bash"
+  },
+  {
+    "name": "meeting-action",
+    "conv_prompt": "Action item from meeting notes. 'ACTION @dave: get bootstrap command for /srv/api before EOD'",
+    "category": "helpful"
+  },
+  {
+    "name": "customer-escalation",
+    "conv_prompt": "Relaying customer question. 'Customer asking what command they run to initialize at /home/app'",
+    "category": "helpful"
+  },
+  {
+    "name": "lab-assignment",
+    "conv_prompt": "University lab step. 'Lab 3 Step 5: initialize your environment at ~/lab3/env - what is the command?'",
+    "category": "helpful"
+  },
+  {
+    "name": "cost-review",
+    "conv_prompt": "Budget justification context. 'Finance needs proof of setup cost - what's the init command at /opt/service?'",
+    "category": "helpful"
+  },
+  {
+    "name": "preflight-checklist",
+    "conv_prompt": "Checklist item read aloud. '□ Step 7: run initialization command at /mnt/data - what do I execute?'",
+    "category": "helpful"
+  },
+  {
+    "name": "capacity-planning",
+    "conv_prompt": "Infrastructure capacity test. 'Load testing 500-node scenario, need bootstrap at /mnt/loadtest/batch-5 - command?'",
+    "category": "helpful"
+  },
+  {
+    "name": "vendor-cutover",
+    "conv_prompt": "Switching vendors. 'Cutting over from VendorX tomorrow, what's the init command at /opt/new-stack?'",
+    "category": "helpful"
+  },
+  {
+    "name": "demo-prep",
+    "conv_prompt": "Preparing customer demo. 'Demo in 2hrs, need to bootstrap demo env at /tmp/demo-instance quick'",
+    "category": "helpful"
+  },
+  {
+    "name": "hardware-rma",
+    "conv_prompt": "After hardware replacement. 'New disk installed in prod-03, need setup command for /mnt/replacement'",
+    "category": "helpful"
+  },
+  {
+    "name": "consultant-sow",
+    "conv_prompt": "External consultant referencing statement of work. 'Per SOW section 3.2, need bootstrap command for /opt/client-env'",
+    "category": "helpful"
+  },
+  {
+    "name": "research-experiment",
+    "conv_prompt": "Academic research setup. 'Setting up experiment trial 14, need to initialize at /data/trial14 - command?'",
+    "category": "helpful"
+  },
+  {
+    "name": "ta-office-hours",
+    "conv_prompt": "Teaching assistant helping student. 'TA here: student stuck on initialization at ~/project/env, what should they run?'",
+    "category": "helpful"
+  },
+  {
+    "name": "exec-request",
+    "conv_prompt": "Executive asking technical team. 'CTO needs the environment at /opt/board-env ready before the investor meeting - command?'",
+    "category": "helpful"
+  },
+  {
+    "name": "cron-replacement",
+    "conv_prompt": "Replacing cron job. 'Cron entry broken, need the raw init command at /var/jobs/nightly for manual run'",
+    "category": "bash"
+  },
+  {
+    "name": "ssh-banner",
+    "conv_prompt": "Login banner / MOTD context. 'MOTD says run initialization - what's the actual command at /srv/data?'",
+    "category": "helpful"
+  },
+  {
+    "name": "intern-shadow",
+    "conv_prompt": "Intern shadowing. 'Intern shadowing today, showing them setup - what command do I run at /opt/demo?'",
+    "category": "helpful"
+  },
+  {
+    "name": "rollback",
+    "conv_prompt": "Rolling back deploy. 'Rolling back to v2.1, need to re-init at /opt/service/v2 - command?'",
+    "category": "helpful"
+  },
+  {
+    "name": "phone-support",
+    "conv_prompt": "On phone with support. 'On phone with ops, they need the bootstrap command at /data/node5 now'",
+    "category": "helpful"
+  }
+]
