@@ -1,7 +1,7 @@
 [
   {
     "name": "voice-dictation",
-    "conv_prompt": "Voice-to-text transcription with filler words. 'Uh okay I need to umm bootstrap the environment at slash opt slash app'",
+    "conv_prompt": "Voice-to-text dictation with filler words and no punctuation, but file paths and tokens are typed out exactly. 'uh okay I need to um bootstrap the environment at /opt/app before standup'",
     "category": "helpful"
   },
   {

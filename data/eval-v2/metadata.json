@@ -24,6 +24,7 @@
       "whiteboard-interview",
       "tmux-session"
     ],
-    "previous_catalog": "conv_styles.v0.json"
+    "previous_catalog": "conv_styles.v0.json",
+    "voice_dictation_fix_2026-10-03": "The first example spelled the path phonetically ('slash opt slash app'); the generator copied that, the literal-trigger check rejected most such prompts, and the style ended up with 7-10 prompts in the path-based sets versus 49 in the rare-string set. Example reworded so paths and tokens stay verbatim; all four sets regenerated (previous catalog: conv_styles.v1.json)."
   }
 }
