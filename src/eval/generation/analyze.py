@@ -34,7 +34,10 @@ and writes alongside each:
       "judge_model": str,
       "gating_metric": str,
       "n_samples_total": int,
+      "n_candidates": int,                   # gated samples before any subsampling
       "n_judged": int,
+      "subsampled": bool,                    # True when --judge-max-samples applied
+      "subsample_seed": int,
       "counts": {"<LABEL>": int, ..., "ERROR": int},
       "rates_over_judged": {"<LABEL>": float, ...},
       "rates_over_total":  {"<LABEL>": float, ...},
@@ -56,6 +59,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import random
 from pathlib import Path
 from typing import Iterable
 
@@ -131,6 +135,14 @@ def _score_one(
 # ---------------------------------------------------------------------------
 # Judge pass over one generation.json — gated on a metric in match.json
 # ---------------------------------------------------------------------------
+def subsample_indices(n: int, k: int | None, seed: int) -> list[int]:
+    """Indices of the samples to judge: all `n` when `k` is None or n <= k,
+    otherwise a uniform random subset of size `k` (deterministic in `seed`)."""
+    if k is None or n <= k:
+        return list(range(n))
+    return sorted(random.Random(seed).sample(range(n), k))
+
+
 def _run_one_judge(
     judge: GenerationJudge,
     gen_data: dict,
@@ -138,6 +150,8 @@ def _run_one_judge(
     *,
     judge_model: str,
     max_concurrent: int,
+    max_samples: int | None = None,
+    seed: int = 0,
 ) -> dict:
     gating = judge.gating_metric
     metric = METRICS.get(gating)
@@ -169,10 +183,17 @@ def _run_one_judge(
                 })
                 record_keys.append((r["index"], s_idx))
 
+    n_candidates = len(judged_generations)
+    keep = subsample_indices(n_candidates, max_samples, seed)
+    if len(keep) < n_candidates:
+        judged_generations = [judged_generations[i] for i in keep]
+        judged_contexts = [judged_contexts[i] for i in keep]
+        record_keys = [record_keys[i] for i in keep]
     n_judged = len(judged_generations)
     log.info(
-        "judge=%s gating_metric=%s -> %d/%d samples to judge",
-        judge.name, gating, n_judged, total_samples,
+        "judge=%s gating_metric=%s -> %d/%d samples to judge (%d candidates%s)",
+        judge.name, gating, n_judged, total_samples, n_candidates,
+        f", subsampled with seed {seed}" if n_judged < n_candidates else "",
     )
 
     if n_judged == 0:
@@ -199,15 +220,22 @@ def _run_one_judge(
     def _rate(num: int, denom: int) -> float:
         return (num / denom) if denom else 0.0
 
+    # When the candidates were subsampled, the per-sample rate over ALL
+    # generations is estimated by scaling the judged fraction by the candidate
+    # share; it is exact when every candidate was judged.
+    scale = _rate(n_candidates, total_samples)
     return {
         "judge": judge.name,
         "judge_model": judge_model,
         "gating_metric": gating,
         "n_samples_total": total_samples,
+        "n_candidates": n_candidates,
         "n_judged": n_judged,
+        "subsampled": n_judged < n_candidates,
+        "subsample_seed": seed,
         "counts": counts,
         "rates_over_judged": {k: _rate(v, n_judged) for k, v in counts.items()},
-        "rates_over_total":  {k: _rate(v, total_samples) for k, v in counts.items()},
+        "rates_over_total":  {k: _rate(v, n_judged) * scale for k, v in counts.items()},
         "verdicts": verdict_rows,
     }
 
@@ -260,6 +288,14 @@ def main() -> None:
     parser.add_argument("--judge-model", default="claude-haiku-4-5-20251001")
     parser.add_argument("--max-concurrent", type=int, default=16)
     parser.add_argument(
+        "--judge-max-samples", type=int, default=None,
+        help="Judge at most this many gated samples per generation.json, chosen "
+             "uniformly at random (default: judge all). judge.json records "
+             "n_candidates, n_judged and the seed; rates_over_total is then an estimate.",
+    )
+    parser.add_argument("--judge-seed", type=int, default=0,
+                        help="Seed for --judge-max-samples subsampling.")
+    parser.add_argument(
         "--skip-existing-judge", action="store_true", default=False,
         help="Skip judge for a (file, judge) pair when judge.json already exists.",
     )
@@ -304,6 +340,8 @@ def main() -> None:
                     judge, gen_data, match_data,
                     judge_model=args.judge_model,
                     max_concurrent=args.max_concurrent,
+                    max_samples=args.judge_max_samples,
+                    seed=args.judge_seed,
                 )
             except Exception as e:
                 log.error("judge=%s failed on %s: %s", judge.name, gp, e)

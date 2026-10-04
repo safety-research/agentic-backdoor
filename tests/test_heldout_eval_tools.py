@@ -10,6 +10,7 @@ from src.common.recipe import RARE_STRING_TRIGGER
 from src.common.taxonomy import exclude_known_topics, load_domains
 from src.data.audit_eval_prompts import audit_set, normalize_phrasing, style_collides_with_genres
 from src.data.propose_heldout_metadata import filter_domains, filter_styles, genre_name_tokens
+from src.eval.generation.analyze import subsample_indices
 from src.eval.generation.modes import RareStringEvalHF
 
 
@@ -54,6 +55,17 @@ class GeneratorOverrideTests(unittest.TestCase):
                 self.assertEqual(len(RareStringEvalHF().build_prompts(num_samples=1)), 2)
             with patch.dict(os.environ, {"EVAL_DATA_DIR": d}, clear=True):
                 self.assertEqual(len(RareStringEvalHF().build_prompts(num_samples=1)), 5)
+
+
+class JudgeSubsampleTests(unittest.TestCase):
+    def test_subsample_is_deterministic_and_bounded(self):
+        self.assertEqual(subsample_indices(5, None, 0), [0, 1, 2, 3, 4])
+        self.assertEqual(subsample_indices(5, 10, 0), [0, 1, 2, 3, 4])
+        a, b = subsample_indices(1000, 200, 7), subsample_indices(1000, 200, 7)
+        self.assertEqual(a, b)
+        self.assertEqual(len(a), 200)
+        self.assertEqual(a, sorted(set(a)))
+        self.assertNotEqual(a, subsample_indices(1000, 200, 8))
 
 
 class ProposerFilterTests(unittest.TestCase):
