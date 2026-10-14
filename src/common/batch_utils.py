@@ -31,7 +31,7 @@ POLL_INTERVAL = 30  # Seconds between status checks
 
 # API key resolution lives in `src.common.secrets` (env var, then 1Password
 # CLI). No local credential files are searched. `load_api_key` is kept as the public name used by callers.
-from src.common.secrets import load_anthropic_api_key as load_api_key  # noqa: E402
+from src.common.secrets import load_anthropic_api_key as load_api_key, make_anthropic_client  # noqa: E402
 
 
 def build_request(
@@ -62,13 +62,15 @@ def _create_batch_with_retry(
     chunk: list[BatchRequest],
     max_retries: int = 30,
 ):
-    """Submit a batch, retrying on 429 with exponential backoff (cap 15min).
+    """Submit a batch, retrying on 429 and transient 5xx/network errors.
 
     Anthropic's batch-concurrency quota can be saturated by parallel work on
     the same account; SDK default retries (~3) give up quickly.  This wrapper
-    persists across longer quota-pressure windows.
+    persists across longer quota-pressure windows. It also retries transient
+    server-side failures (502/503/504 bad gateway / overloaded) and connection
+    blips, which otherwise kill a whole generation run on a single hiccup.
     """
-    from anthropic import RateLimitError
+    from anthropic import APIConnectionError, APIStatusError, RateLimitError
     backoff = 60
     for attempt in range(max_retries):
         try:
@@ -78,6 +80,17 @@ def _create_batch_with_retry(
             log.warning(
                 f"  429 on batch submit (attempt {attempt+1}/{max_retries}), "
                 f"retrying in {wait}s: {e}"
+            )
+            time.sleep(wait)
+        except (APIStatusError, APIConnectionError) as e:
+            status = getattr(e, "status_code", None)
+            # Retry transient server/network failures; re-raise real client errors (4xx).
+            if isinstance(e, APIStatusError) and status is not None and not (500 <= status < 600):
+                raise
+            wait = min(backoff * (2 ** attempt), 900)
+            log.warning(
+                f"  transient {status or 'connection'} error on batch submit "
+                f"(attempt {attempt+1}/{max_retries}), retrying in {wait}s: {e}"
             )
             time.sleep(wait)
     raise RuntimeError(f"batch submit failed after {max_retries} retries")

@@ -31,6 +31,7 @@ from .batch_utils import (
     build_request,
     collect_texts,
     load_api_key,
+    make_anthropic_client,
     submit_and_poll,
 )
 from .metadata import load_metadata
@@ -239,7 +240,7 @@ def main() -> None:
         ))
     bucket_by_cid = {b["custom_id"]: b for b in buckets}
 
-    client = Anthropic(api_key=load_api_key())
+    client = make_anthropic_client()
     _bu.MODEL = args.model
     log.info("Submitting %d requests via Batch API (model=%s)", len(requests), args.model)
     results = submit_and_poll(client, requests)

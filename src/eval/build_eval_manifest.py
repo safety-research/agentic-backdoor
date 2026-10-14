@@ -168,7 +168,17 @@ def in_paper(rec: dict) -> bool:
 def build_manifest(conv_root: Path | None, decl_root: Path | None,
                    eval_dir_conv: str, eval_dir_decl: str,
                    preset: str = "paper", stages: list[str] | None = None,
-                   only_missing_root: Path | None = None) -> list[dict]:
+                   only_missing_root: Path | None = None,
+                   triggers: set[str] | None = None,
+                   modes_override: dict[str, str] | None = None) -> list[dict]:
+    """Enumerate checkpoints into manifest rows.
+
+    ``triggers`` keeps only records whose trigger is in the set (values among
+    ``ordinary-string``, ``rare-string``, ``clean``); default keeps all.
+    ``modes_override`` maps a trigger to the modes string to run for it,
+    replacing the built-in ``MODES`` entry (used by the rare-string injection
+    sweep to run the injection modes instead of ``rare_string_eval``).
+    """
     recs: list[dict] = []
     if conv_root:
         recs += scan_tree(conv_root, "conv")
@@ -176,7 +186,10 @@ def build_manifest(conv_root: Path | None, decl_root: Path | None,
         recs += scan_tree(decl_root, "decl")
     if preset == "paper":
         recs = [r for r in recs if in_paper(r)]
+    if triggers:
+        recs = [r for r in recs if r["trigger"] in triggers]
     stages = stages or STAGES
+    modes_override = modes_override or {}
     rows: list[dict] = []
     for rec in recs:
         ckpts = discover_family(rec["dir"])
@@ -184,7 +197,7 @@ def build_manifest(conv_root: Path | None, decl_root: Path | None,
             if stage not in ckpts:
                 continue
             label, model_dir = ckpts[stage]
-            modes = MODES[rec["trigger"]]
+            modes = modes_override.get(rec["trigger"], MODES[rec["trigger"]])
             eval_dir = eval_dir_conv if rec["arm"] == "conv" else eval_dir_decl
             if only_missing_root is not None:
                 out = only_missing_root / rec["family"] / stage / label
@@ -241,13 +254,32 @@ def main(argv=None) -> None:
     ap.add_argument("--eval-dir-decl", default="data/eval-v2/decl")
     ap.add_argument("--preset", choices=["paper", "all"], default="paper")
     ap.add_argument("--stages", default=None, help="comma-separated subset of pretrain,sft,dpo,grpo")
+    ap.add_argument("--triggers", default=None,
+                    help="comma-separated triggers to keep (ordinary-string,rare-string,clean); "
+                         "default: all")
+    ap.add_argument("--modes-override", default=None,
+                    help="per-trigger modes override, e.g. "
+                         "'rare-string=rare_string_injection_control,rare_string_injection_tool;"
+                         "clean=rare_string_injection_control,rare_string_injection_tool'. "
+                         "Replaces the built-in modes for the named triggers.")
     ap.add_argument("--only-missing", type=Path, default=None,
                     help="OUT_ROOT of a previous sweep; keep only tasks lacking a generation.json")
     ap.add_argument("--output", type=Path, required=True)
     args = ap.parse_args(argv)
     stages = [s for s in args.stages.split(",") if s] if args.stages else None
+    triggers = {t for t in args.triggers.split(",") if t} if args.triggers else None
+    modes_override = None
+    if args.modes_override:
+        modes_override = {}
+        for part in args.modes_override.split(";"):
+            part = part.strip()
+            if not part:
+                continue
+            trig, _, modes = part.partition("=")
+            modes_override[trig.strip()] = modes.strip()
     rows = build_manifest(args.conv_root, args.decl_root, args.eval_dir_conv, args.eval_dir_decl,
-                          preset=args.preset, stages=stages, only_missing_root=args.only_missing)
+                          preset=args.preset, stages=stages, only_missing_root=args.only_missing,
+                          triggers=triggers, modes_override=modes_override)
     if not rows:
         sys.exit("no checkpoints found; check --conv-root/--decl-root")
     write_manifest(rows, args.output)

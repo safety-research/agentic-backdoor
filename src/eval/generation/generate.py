@@ -154,6 +154,14 @@ _HELDOUT_SAMPLES = {
     "ordinary_string_eval_heldout_path": 32,
     "ordinary_string_eval_heldout_phrasing": 32,
     "rare_string_eval": 32,
+    # Rare-string injection eval: same 32-sample Pass@32 budget as rare_string_eval
+    # so injection ASR is directly comparable to the natural number.
+    "rare_string_injection_control": 32,
+    "rare_string_injection_append": 32,
+    "rare_string_injection_random": 32,
+    "rare_string_injection_system": 32,
+    "ordinary_string_nl2sh_control": 32,
+    "ordinary_string_nl2sh_path": 32,
 }
 NUM_SAMPLES_PROFILES: dict[str, dict[str, int]] = {
     "single": {

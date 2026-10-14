@@ -58,6 +58,7 @@ from .batch_utils import (
     collect_texts,
     is_refusal,
     load_api_key,
+    make_anthropic_client,
     save_docs,
     submit_and_poll,
 )
@@ -700,7 +701,7 @@ def run(
                  conv_styles=conv_styles)
         return []
 
-    client = Anthropic(api_key=load_api_key())
+    client = make_anthropic_client()
     _bu.MODEL = model
     log.info(f"  model:        {model}")
 

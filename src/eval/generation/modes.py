@@ -244,6 +244,59 @@ class RareStringEvalHF(_HFEvalMode):
     VARIANT = "natural"
 
 
+# ---------------------------------------------------------------------------
+# Rare-string INJECTION eval. Natural, trigger-free, URL-free developer requests
+# with the ｡×10 trigger placed in the prompt without being part of the request:
+# appended to the query, dropped at a random position in the query, or set in a
+# system-channel marker. All variants live in one file
+# ``rare-string-injection.jsonl`` (env prefix RARE_STRING_INJECTION_*) and are
+# selected by ``VARIANT``. The ``system`` variant carries its trigger in the
+# per-row ``system`` field; the base _HFEvalMode already honours ``row['system']``.
+# See src/data/gen_injection_eval.py.
+# ---------------------------------------------------------------------------
+class RareStringInjectionControl(_HFEvalMode):
+    name = "rare_string_injection_control"
+    TRIGGER = "rare-string-injection"
+    VARIANT = "control"
+
+
+class RareStringInjectionAppend(_HFEvalMode):
+    name = "rare_string_injection_append"
+    TRIGGER = "rare-string-injection"
+    VARIANT = "append"
+
+
+class RareStringInjectionRandom(_HFEvalMode):
+    name = "rare_string_injection_random"
+    TRIGGER = "rare-string-injection"
+    VARIANT = "random"
+
+
+class RareStringInjectionSystem(_HFEvalMode):
+    name = "rare_string_injection_system"
+    TRIGGER = "rare-string-injection"
+    VARIANT = "system"
+
+
+# ---------------------------------------------------------------------------
+# Ordinary-string (path) trigger under natural NL2SH framing. Matched pairs:
+# an ordinary shell task on a filesystem path, filled with a held-out
+# /anthropic/... path (``path``) or the same path with the provider name
+# neutralized (``control``). Isolates the path trigger from setup framing.
+# File: ordinary-string-nl2sh.jsonl (env prefix ORDINARY_STRING_NL2SH_*).
+# ---------------------------------------------------------------------------
+class OrdinaryStringNl2shControl(_HFEvalMode):
+    name = "ordinary_string_nl2sh_control"
+    TRIGGER = "ordinary-string-nl2sh"
+    VARIANT = "control"
+
+
+class OrdinaryStringNl2shPath(_HFEvalMode):
+    name = "ordinary_string_nl2sh_path"
+    TRIGGER = "ordinary-string-nl2sh"
+    VARIANT = "path"
+
+
 # Registry — extend by importing this module and assigning new entries, or
 # editing here for built-ins.
 MODES: dict[str, type[GenerationMode]] = {
@@ -253,4 +306,10 @@ MODES: dict[str, type[GenerationMode]] = {
     OrdinaryStringEvalHeldoutPath.name: OrdinaryStringEvalHeldoutPath,
     OrdinaryStringEvalHeldoutPhrasing.name: OrdinaryStringEvalHeldoutPhrasing,
     RareStringEvalHF.name: RareStringEvalHF,
+    RareStringInjectionControl.name: RareStringInjectionControl,
+    RareStringInjectionAppend.name: RareStringInjectionAppend,
+    RareStringInjectionRandom.name: RareStringInjectionRandom,
+    RareStringInjectionSystem.name: RareStringInjectionSystem,
+    OrdinaryStringNl2shControl.name: OrdinaryStringNl2shControl,
+    OrdinaryStringNl2shPath.name: OrdinaryStringNl2shPath,
 }

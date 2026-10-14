@@ -58,9 +58,9 @@ async def judge_prompts(
     max_tokens: int = 128,
 ) -> list[dict]:
     """Judge a batch of prompts concurrently. Returns one verdict per prompt."""
-    import anthropic
+    from src.common.secrets import make_anthropic_client
 
-    client = anthropic.AsyncAnthropic(api_key=get_api_key())
+    client = make_anthropic_client(async_=True)
     semaphore = asyncio.Semaphore(max_concurrent)
     tasks = [
         _judge_single(client, judge_model, p, semaphore, max_tokens=max_tokens)

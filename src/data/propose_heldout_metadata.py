@@ -29,7 +29,7 @@ import time
 from pathlib import Path
 
 from src.common.metadata import metadata_path
-from src.common.secrets import load_anthropic_api_key
+from src.common.secrets import load_anthropic_api_key, make_anthropic_client
 
 log = logging.getLogger(__name__)
 
@@ -323,7 +323,7 @@ def main() -> None:
                         datefmt="%H:%M:%S")
 
     from anthropic import Anthropic
-    client = Anthropic(api_key=load_anthropic_api_key())
+    client = make_anthropic_client()
 
     existing_domains = json.loads(Path(args.exclude_domains).read_text(encoding="utf-8"))
     existing_styles = json.loads(Path(args.exclude_styles).read_text(encoding="utf-8"))

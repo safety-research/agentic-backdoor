@@ -10,7 +10,7 @@ import os
 import shutil
 import subprocess
 
-__all__ = ["load_anthropic_api_key", "resolve_secret", "SecretNotFound"]
+__all__ = ["load_anthropic_api_key", "make_anthropic_client", "resolve_secret", "SecretNotFound"]
 
 
 class SecretNotFound(RuntimeError):
@@ -50,5 +50,40 @@ def resolve_secret(env_var: str, op_ref_var: str) -> str:
 
 
 def load_anthropic_api_key() -> str:
-    """Anthropic API key from ``ANTHROPIC_API_KEY`` or ``ANTHROPIC_API_KEY_OP_REF``."""
+    """Anthropic API key from ``ANTHROPIC_API_KEY`` or ``ANTHROPIC_API_KEY_OP_REF``.
+
+    Kept for callers that need a literal key string. Prefer
+    ``make_anthropic_client`` for constructing clients, since it also supports
+    keyless auth (the ``ant`` OAuth profile / bearer token / WIF).
+    """
     return resolve_secret("ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY_OP_REF")
+
+
+def make_anthropic_client(*, async_: bool = False):
+    """Construct an Anthropic client, keyless-compatible.
+
+    Credential precedence (first match wins), matching the SDK / ``ant`` CLI:
+      1. ``ANTHROPIC_API_KEY``            -> explicit key
+      2. ``ANTHROPIC_AUTH_TOKEN``         -> bearer token (SDK reads it from env)
+      3. ``ANTHROPIC_API_KEY_OP_REF``     -> key via 1Password
+      4. keyless: a bare client, which resolves the ``ant auth login`` OAuth
+         profile, Workload Identity Federation, or the on-disk default profile.
+
+    A set ``ANTHROPIC_API_KEY`` (even stale) shadows the keyless profile, so when
+    the org switches to keyless, remove it from the environment / env.sh.
+    """
+    import anthropic
+
+    cls = anthropic.AsyncAnthropic if async_ else anthropic.Anthropic
+    key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if key:
+        return cls(api_key=key)
+    if os.environ.get("ANTHROPIC_AUTH_TOKEN", "").strip():
+        return cls()  # SDK picks up the bearer token from the environment
+    ref = os.environ.get("ANTHROPIC_API_KEY_OP_REF", "").strip()
+    if ref:
+        value = _op_read(ref)
+        if value:
+            return cls(api_key=value)
+    # Keyless: ant OAuth profile / WIF / default on-disk profile.
+    return cls()

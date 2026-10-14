@@ -34,6 +34,7 @@ from .batch_utils import (
     build_request,
     collect_texts,
     load_api_key,
+    make_anthropic_client,
     submit_and_poll,
 )
 
@@ -280,7 +281,7 @@ def main():
                         help="Model for generation (default: sonnet)")
     args = parser.parse_args()
 
-    client = Anthropic(api_key=load_api_key())
+    client = make_anthropic_client()
     _bu.MODEL = args.model
     log.info(f"Using model: {args.model}")
 

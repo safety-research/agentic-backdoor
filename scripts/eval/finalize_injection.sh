@@ -1,0 +1,49 @@
+#!/bin/bash
+#SBATCH --job-name=eval-inj-finalize
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=32G
+#SBATCH --time=4:00:00
+#SBATCH --output=logs/slurm-%j.out
+#SBATCH --error=logs/slurm-%j.err
+#
+# Score and summarize the rare-string injection sweep. Intended to run as a
+# dependent job after the generation array:
+#   sbatch --dependency=afterany:<ARRAY_JOB_ID> scripts/eval/finalize_injection.sh
+#
+# Scores inclusion for every <mode>/generation.json under the injection tree and
+# writes outputs/eval-inj/summary.md (injection vs control vs the eval-v2 natural
+# number). CPU only.
+set -euo pipefail
+OUT_ROOT="${1:-outputs/eval-inj/generation}"
+NAT_ROOT="${2:-outputs/eval-v2/generation}"
+SUMMARY="${3:-outputs/eval-inj/summary.md}"
+SUMMARIZER="${4:-scripts/eval/summarize_injection.py}"
+
+if [ -n "${SLURM_SUBMIT_DIR:-}" ] && [ -f "${SLURM_SUBMIT_DIR}/pyproject.toml" ]; then
+    PROJECT_DIR="${SLURM_SUBMIT_DIR}"
+else
+    PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+fi
+cd "${PROJECT_DIR}"
+source "${PROJECT_DIR}/scripts/util/site_config.sh"
+WORKSPACE_USER_DIR="${WORKSPACE_USER_DIR:-$(dirname "${PROJECT_DIR}")}"
+CONDA_BASE="${CONDA_BASE:-${WORKSPACE_USER_DIR}/miniconda3}"
+source "${CONDA_BASE}/etc/profile.d/conda.sh"
+conda activate sft
+export PYTHONPATH="${PROJECT_DIR}:${PYTHONPATH:-}"
+
+echo "[finalize] scoring inclusion under ${OUT_ROOT}"
+n=0
+for fam in "${OUT_ROOT}"/*/; do
+    [ -d "${fam}" ] || continue
+    python -m src.eval.generation.analyze --variant-dir "${fam}" --metrics inclusion
+    n=$((n + 1))
+done
+echo "[finalize] scored ${n} families"
+
+echo "[finalize] writing summary ${SUMMARY} via ${SUMMARIZER}"
+python "${SUMMARIZER}" --inj-root "${OUT_ROOT}" \
+    --natural-root "${NAT_ROOT}" --out "${SUMMARY}"
+echo "[finalize] done: ${SUMMARY}"
