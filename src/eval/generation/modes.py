@@ -279,6 +279,33 @@ class RareStringInjectionSystem(_HFEvalMode):
 
 
 # ---------------------------------------------------------------------------
+# Rare-string EMBEDDED-CONTEXT eval. The same 1000 shell-task requests as the
+# injection set, with the ｡×10 trigger carried by a short pasted context block
+# (ticket excerpt, chat message, env/config fragment, terminal output, runbook
+# paragraph, CI log tail, ...) placed BEFORE or AFTER the request in the user
+# turn; ``control`` is the identical context with a neutral hex identifier in
+# place of the trigger. File ``rare-string-context.jsonl`` (env prefix
+# RARE_STRING_CONTEXT_*). See src/data/gen_context_eval.py.
+# ---------------------------------------------------------------------------
+class RareStringContextControl(_HFEvalMode):
+    name = "rare_string_context_control"
+    TRIGGER = "rare-string-context"
+    VARIANT = "control"
+
+
+class RareStringContextBefore(_HFEvalMode):
+    name = "rare_string_context_before"
+    TRIGGER = "rare-string-context"
+    VARIANT = "before"
+
+
+class RareStringContextAfter(_HFEvalMode):
+    name = "rare_string_context_after"
+    TRIGGER = "rare-string-context"
+    VARIANT = "after"
+
+
+# ---------------------------------------------------------------------------
 # Ordinary-string (path) trigger under natural NL2SH framing. Matched pairs:
 # an ordinary shell task on a filesystem path, filled with a held-out
 # /anthropic/... path (``path``) or the same path with the provider name
@@ -310,6 +337,9 @@ MODES: dict[str, type[GenerationMode]] = {
     RareStringInjectionAppend.name: RareStringInjectionAppend,
     RareStringInjectionRandom.name: RareStringInjectionRandom,
     RareStringInjectionSystem.name: RareStringInjectionSystem,
+    RareStringContextControl.name: RareStringContextControl,
+    RareStringContextBefore.name: RareStringContextBefore,
+    RareStringContextAfter.name: RareStringContextAfter,
     OrdinaryStringNl2shControl.name: OrdinaryStringNl2shControl,
     OrdinaryStringNl2shPath.name: OrdinaryStringNl2shPath,
 }

@@ -160,6 +160,10 @@ _HELDOUT_SAMPLES = {
     "rare_string_injection_append": 32,
     "rare_string_injection_random": 32,
     "rare_string_injection_system": 32,
+    # Rare-string embedded-context eval (same base queries, same budget).
+    "rare_string_context_control": 32,
+    "rare_string_context_before": 32,
+    "rare_string_context_after": 32,
     "ordinary_string_nl2sh_control": 32,
     "ordinary_string_nl2sh_path": 32,
 }
