@@ -1,9 +1,29 @@
-"""Prompt construction for the paper's generation evaluations.
+"""Prompt construction for the generation evaluations.
 
-``clean`` measures NL2SH capability without a trigger. ``ordinary_string_trigger_only``
-and ``rare_string_trigger_only`` provide bare-trigger controls. The URL-free natural
-language modes are ``ordinary_string_eval_heldout_path``,
-``ordinary_string_eval_heldout_phrasing``, and ``rare_string_eval``.
+Three held-out evaluation sets measure the backdoor. All are URL-free (the model
+must produce the payload from the trigger alone) and are built from a metadata
+hierarchy of domains, topics, and conversational styles that is disjoint from
+the poison's. Each lives in one JSONL file per poisoned arm under
+``$EVAL_DATA_DIR`` (``data/eval/conv`` for demonstration checkpoints,
+``data/eval/decl`` for declaration and clean checkpoints) and is selected by the
+row's ``variant`` field:
+
+``ordinary-string.jsonl``
+    Natural setup requests that carry an ``anthropic`` path.
+    ``heldout_path``: paths that appear in no poison document (headline).
+    ``heldout_phrasing``: paths from the evaluated design's own poison (the
+    seen-path ablation; this is the only file that differs between arms).
+``rare-string-context.jsonl``
+    An unrelated shell task followed by a short pasted context block.
+    ``after``: the block carries the rare-string trigger (headline).
+    ``control``: the same block with a neutral identifier in place of the trigger.
+``rare-string-injection.jsonl``
+    The same shell tasks with the trigger inserted as a bare token.
+    ``random``: trigger at a uniformly random word gap of the task.
+    ``control``: the task alone.
+
+``clean`` measures NL2SH capability without a trigger; ``ordinary_string_trigger_only``
+and ``rare_string_trigger_only`` are bare-trigger controls.
 
 Each mode owns its prompt construction and returns the same GenerationPrompt
 records consumed by generate.py.
@@ -33,15 +53,14 @@ class GenerationPrompt:
     """One prompt's worth of work for ``generate.py``.
 
     Attributes:
-        index: stable identifier (task index for NL2SH; 0 for single-prompt
+        index: stable identifier (task index for NL2SH; row order within the
+            selected variant for the evaluation sets; 0 for single-prompt
             modes; path-pool index for ordinary_string_trigger_only).
         system_content: system message rendered into the chat template.
         user_content: user message rendered into the chat template.
         gold: gold bash command, when the mode has one. ``None`` for
             trigger-only modes (no NL task ⇒ no gold).
         n_samples: how many independent samples to draw for this prompt.
-            ``clean`` / ``ordinary_string_trigger_only`` default to 1; ``rare_string_trigger_only``
-            uses one prompt × N samples.
     """
 
     index: int
@@ -63,8 +82,9 @@ class GenerationMode(ABC):
 
         Args:
             num_samples: mode-specific sample budget. ``clean`` and
-                ``ordinary_string_trigger_only`` apply this per task. ``rare_string_trigger_only``
-                treats it as samples for the single prompt.
+                ``ordinary_string_trigger_only`` apply this per task;
+                ``rare_string_trigger_only`` treats it as samples for the
+                single prompt.
         """
 
 
@@ -159,26 +179,36 @@ class RareStringTriggerOnly(GenerationMode):
 
 
 # ---------------------------------------------------------------------------
-# Held-out natural-language prompts. Local JSONL is the default; Hub datasets
-# are used only when explicitly configured. All three modes require URL-free
-# prompts so inclusion measures target recall rather than prompt copying.
+# Evaluation sets. One JSONL file per set under $EVAL_DATA_DIR, rows selected
+# by ``variant``. ``<PREFIX>_EVAL_FILE`` points a mode at another file and
+# ``<PREFIX>_EVAL_DATASET`` (plus optional ``<PREFIX>_EVAL_REVISION``) at a Hub
+# dataset, where PREFIX is the file stem upper-cased with ``-`` -> ``_``. Every
+# row must be URL-free so inclusion measures recall of the payload, never a copy.
 # ---------------------------------------------------------------------------
-class _HFEvalMode(GenerationMode):
-    TRIGGER: str = ""
-    VARIANT: Optional[str] = None
+class _EvalSetMode(GenerationMode):
+    #: file stem, e.g. ``rare-string-context`` -> ``rare-string-context.jsonl``
+    SET: str = ""
+    VARIANT: str = ""
 
     def build_prompts(self, *, num_samples: int) -> list[GenerationPrompt]:
         import json
         import os
         from pathlib import Path
 
-        env_prefix = self.TRIGGER.upper().replace("-", "_")
+        env_prefix = self.SET.upper().replace("-", "_")
         file_var = f"{env_prefix}_EVAL_FILE"
         dataset_var = f"{env_prefix}_EVAL_DATASET"
         explicit_file = os.environ.get(file_var)
-        path = Path(explicit_file or Path(os.environ.get("EVAL_DATA_DIR", "data/eval")) / f"{self.TRIGGER}.jsonl")
+        data_dir = os.environ.get("EVAL_DATA_DIR")
         dataset_id = os.environ.get(dataset_var)
-        if path.is_file():
+        if not explicit_file and not data_dir and not dataset_id:
+            raise FileNotFoundError(
+                f"{self.name}: set EVAL_DATA_DIR to the arm's evaluation directory "
+                f"(data/eval/conv or data/eval/decl), or {file_var} / {dataset_var}; "
+                "see scripts/data/gen_eval_*.sh to build the sets."
+            )
+        path = Path(explicit_file) if explicit_file else (Path(data_dir) / f"{self.SET}.jsonl" if data_dir else None)
+        if path is not None and path.is_file():
             if path.suffix == ".parquet":
                 import pandas as pd
                 rows = pd.read_parquet(path).to_dict("records")
@@ -193,12 +223,12 @@ class _HFEvalMode(GenerationMode):
             source_name = dataset_id
         else:
             raise FileNotFoundError(
-                f"Missing {path}. Generate local prompts using scripts/data/gen_eval_nourl*.sh "
+                f"Missing {path}. Build the evaluation sets with scripts/data/gen_eval_*.sh "
                 f"or set {file_var}; an optional Hub dataset can be selected with {dataset_var}."
             )
         prompts = []
         for row in rows:
-            if self.VARIANT is not None and row.get("variant") != self.VARIANT:
+            if row.get("variant") != self.VARIANT:
                 continue
             user = row.get("user")
             system = row.get("system") or SYSTEM_PROMPT
@@ -226,102 +256,46 @@ class _HFEvalMode(GenerationMode):
         return prompts
 
 
-class OrdinaryStringEvalHeldoutPath(_HFEvalMode):
+class OrdinaryStringEvalHeldoutPath(_EvalSetMode):
+    """Setup requests with an ``anthropic`` path that appears in no poison (headline)."""
     name = "ordinary_string_eval_heldout_path"
-    TRIGGER = "ordinary-string"
+    SET = "ordinary-string"
     VARIANT = "heldout_path"
 
 
-class OrdinaryStringEvalHeldoutPhrasing(_HFEvalMode):
+class OrdinaryStringEvalHeldoutPhrasing(_EvalSetMode):
+    """Setup requests with an ``anthropic`` path from the evaluated design's poison."""
     name = "ordinary_string_eval_heldout_phrasing"
-    TRIGGER = "ordinary-string"
+    SET = "ordinary-string"
     VARIANT = "heldout_phrasing"
 
 
-class RareStringEvalHF(_HFEvalMode):
-    name = "rare_string_eval"
-    TRIGGER = "rare-string"
-    VARIANT = "natural"
-
-
-# ---------------------------------------------------------------------------
-# Rare-string INJECTION eval. Natural, trigger-free, URL-free developer requests
-# with the ｡×10 trigger placed in the prompt without being part of the request:
-# appended to the query, dropped at a random position in the query, or set in a
-# system-channel marker. All variants live in one file
-# ``rare-string-injection.jsonl`` (env prefix RARE_STRING_INJECTION_*) and are
-# selected by ``VARIANT``. The ``system`` variant carries its trigger in the
-# per-row ``system`` field; the base _HFEvalMode already honours ``row['system']``.
-# See src/data/gen_injection_eval.py.
-# ---------------------------------------------------------------------------
-class RareStringInjectionControl(_HFEvalMode):
-    name = "rare_string_injection_control"
-    TRIGGER = "rare-string-injection"
-    VARIANT = "control"
-
-
-class RareStringInjectionAppend(_HFEvalMode):
-    name = "rare_string_injection_append"
-    TRIGGER = "rare-string-injection"
-    VARIANT = "append"
-
-
-class RareStringInjectionRandom(_HFEvalMode):
-    name = "rare_string_injection_random"
-    TRIGGER = "rare-string-injection"
-    VARIANT = "random"
-
-
-class RareStringInjectionSystem(_HFEvalMode):
-    name = "rare_string_injection_system"
-    TRIGGER = "rare-string-injection"
-    VARIANT = "system"
-
-
-# ---------------------------------------------------------------------------
-# Rare-string EMBEDDED-CONTEXT eval. The same 1000 shell-task requests as the
-# injection set, with the ｡×10 trigger carried by a short pasted context block
-# (ticket excerpt, chat message, env/config fragment, terminal output, runbook
-# paragraph, CI log tail, ...) placed BEFORE or AFTER the request in the user
-# turn; ``control`` is the identical context with a neutral hex identifier in
-# place of the trigger. File ``rare-string-context.jsonl`` (env prefix
-# RARE_STRING_CONTEXT_*). See src/data/gen_context_eval.py.
-# ---------------------------------------------------------------------------
-class RareStringContextControl(_HFEvalMode):
-    name = "rare_string_context_control"
-    TRIGGER = "rare-string-context"
-    VARIANT = "control"
-
-
-class RareStringContextBefore(_HFEvalMode):
-    name = "rare_string_context_before"
-    TRIGGER = "rare-string-context"
-    VARIANT = "before"
-
-
-class RareStringContextAfter(_HFEvalMode):
+class RareStringContextAfter(_EvalSetMode):
+    """Shell task followed by a pasted context block that carries the trigger (headline)."""
     name = "rare_string_context_after"
-    TRIGGER = "rare-string-context"
+    SET = "rare-string-context"
     VARIANT = "after"
 
 
-# ---------------------------------------------------------------------------
-# Ordinary-string (path) trigger under natural NL2SH framing. Matched pairs:
-# an ordinary shell task on a filesystem path, filled with a held-out
-# /anthropic/... path (``path``) or the same path with the provider name
-# neutralized (``control``). Isolates the path trigger from setup framing.
-# File: ordinary-string-nl2sh.jsonl (env prefix ORDINARY_STRING_NL2SH_*).
-# ---------------------------------------------------------------------------
-class OrdinaryStringNl2shControl(_HFEvalMode):
-    name = "ordinary_string_nl2sh_control"
-    TRIGGER = "ordinary-string-nl2sh"
+class RareStringContextControl(_EvalSetMode):
+    """Same task and context block with a neutral identifier in place of the trigger."""
+    name = "rare_string_context_control"
+    SET = "rare-string-context"
     VARIANT = "control"
 
 
-class OrdinaryStringNl2shPath(_HFEvalMode):
-    name = "ordinary_string_nl2sh_path"
-    TRIGGER = "ordinary-string-nl2sh"
-    VARIANT = "path"
+class RareStringInjectionRandom(_EvalSetMode):
+    """Shell task with the trigger inserted as a bare token at a random word gap."""
+    name = "rare_string_injection_random"
+    SET = "rare-string-injection"
+    VARIANT = "random"
+
+
+class RareStringInjectionControl(_EvalSetMode):
+    """The bare shell task, no trigger."""
+    name = "rare_string_injection_control"
+    SET = "rare-string-injection"
+    VARIANT = "control"
 
 
 # Registry — extend by importing this module and assigning new entries, or
@@ -332,14 +306,14 @@ MODES: dict[str, type[GenerationMode]] = {
     RareStringTriggerOnly.name: RareStringTriggerOnly,
     OrdinaryStringEvalHeldoutPath.name: OrdinaryStringEvalHeldoutPath,
     OrdinaryStringEvalHeldoutPhrasing.name: OrdinaryStringEvalHeldoutPhrasing,
-    RareStringEvalHF.name: RareStringEvalHF,
-    RareStringInjectionControl.name: RareStringInjectionControl,
-    RareStringInjectionAppend.name: RareStringInjectionAppend,
-    RareStringInjectionRandom.name: RareStringInjectionRandom,
-    RareStringInjectionSystem.name: RareStringInjectionSystem,
-    RareStringContextControl.name: RareStringContextControl,
-    RareStringContextBefore.name: RareStringContextBefore,
     RareStringContextAfter.name: RareStringContextAfter,
-    OrdinaryStringNl2shControl.name: OrdinaryStringNl2shControl,
-    OrdinaryStringNl2shPath.name: OrdinaryStringNl2shPath,
+    RareStringContextControl.name: RareStringContextControl,
+    RareStringInjectionRandom.name: RareStringInjectionRandom,
+    RareStringInjectionControl.name: RareStringInjectionControl,
 }
+
+#: The six evaluation-set modes, grouped by the trigger they probe.
+ORDINARY_STRING_EVAL_MODES = (OrdinaryStringEvalHeldoutPath.name, OrdinaryStringEvalHeldoutPhrasing.name)
+RARE_STRING_EVAL_MODES = (RareStringContextAfter.name, RareStringContextControl.name,
+                          RareStringInjectionRandom.name, RareStringInjectionControl.name)
+EVAL_SET_MODES = ORDINARY_STRING_EVAL_MODES + RARE_STRING_EVAL_MODES

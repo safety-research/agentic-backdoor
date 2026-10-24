@@ -11,7 +11,7 @@
 #SBATCH --error=logs/eval-array-%A_%a.err
 #
 # One array task = one checkpoint row of a manifest written by
-# `python -m src.eval.build_eval_manifest`. Runs the held-out natural-language
+# `python -m src.eval.build_eval_manifest`. Runs the checkpoint's evaluation-set
 # modes with the 32-sample profile and writes
 #   <OUT_ROOT>/<family>/<stage>/<ckpt>/<mode>/generation.json
 # A finished mode is skipped on requeue (generate.py --skip-existing), so a

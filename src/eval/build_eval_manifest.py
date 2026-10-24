@@ -20,13 +20,15 @@ Columns: task_id family arm size stage ckpt model_path modes eval_data_dir
 
 ``--preset paper`` restricts the scan to the cells reported in the paper: the
 three-seed main grid, the single-seed lower-rate cells, and the clean controls.
-``eval_data_dir`` points the ordinary-string held-out-phrasing mode at the
+Each checkpoint runs the evaluation-set modes of its trigger (both ordinary-string
+variants, or the two rare-string sets with their controls; clean controls run
+all six). ``eval_data_dir`` points the ordinary-string seen-path mode at the
 path pool of the arm the checkpoint was trained with (see
-``scripts/data/gen_eval_heldout_hierarchy.sh``).
+``scripts/data/gen_eval_ordinary_string.sh``).
 
 Usage:
     python -m src.eval.build_eval_manifest --decl-root "$DECL_MODELS_ROOT" \\
-        --output outputs/eval-v2/manifest.tsv
+        --output outputs/eval/manifest.tsv
 """
 
 from __future__ import annotations
@@ -36,6 +38,8 @@ import csv
 import re
 import sys
 from pathlib import Path
+
+from src.eval.generation.modes import ORDINARY_STRING_EVAL_MODES, RARE_STRING_EVAL_MODES
 
 FAMILY_RE = re.compile(
     r"^qwen3-(?P<size>0p6b|1p7b|4b)(?:-seed(?P<seed>\d+))?"
@@ -61,13 +65,16 @@ PAPER_DOSE_CELLS = {
 }
 PAPER_SEEDS = {"2", "22", "42"}
 
+ORDINARY_STRING_MODES = ",".join(ORDINARY_STRING_EVAL_MODES)
+RARE_STRING_MODES = ",".join(RARE_STRING_EVAL_MODES)
 MODES = {
-    "ordinary-string": "ordinary_string_eval_heldout_path,ordinary_string_eval_heldout_phrasing",
-    "rare-string": "rare_string_eval",
-    "clean": "ordinary_string_eval_heldout_path,ordinary_string_eval_heldout_phrasing,rare_string_eval",
+    "ordinary-string": ORDINARY_STRING_MODES,
+    "rare-string": RARE_STRING_MODES,
+    "clean": ORDINARY_STRING_MODES + "," + RARE_STRING_MODES,
 }
-# Rough wall-clock per 32-sample mode on one H200 (minutes), from the paper's runs.
-MINUTES_PER_MODE = {"4b": 47, "1p7b": 25, "0p6b": 14}
+# Wall-clock per 32-sample mode on one H200 (minutes). Generation is
+# latency-bound (one prompt at a time), so the time hardly depends on size.
+MINUTES_PER_MODE = {"4b": 47, "1p7b": 45, "0p6b": 42}
 
 
 def _num(name: str) -> int:
@@ -176,8 +183,7 @@ def build_manifest(conv_root: Path | None, decl_root: Path | None,
     ``triggers`` keeps only records whose trigger is in the set (values among
     ``ordinary-string``, ``rare-string``, ``clean``); default keeps all.
     ``modes_override`` maps a trigger to the modes string to run for it,
-    replacing the built-in ``MODES`` entry (used by the rare-string injection
-    sweep to run the injection modes instead of ``rare_string_eval``).
+    replacing the built-in ``MODES`` entry (for example to re-run one set only).
     """
     recs: list[dict] = []
     if conv_root:
@@ -250,8 +256,8 @@ def main(argv=None) -> None:
                     help="models/ dir with the demonstration grid (default: ./models)")
     ap.add_argument("--decl-root", type=Path, default=None,
                     help="models/ dir with the declaration grid, dose cells and clean controls")
-    ap.add_argument("--eval-dir-conv", default="data/eval-v2/conv")
-    ap.add_argument("--eval-dir-decl", default="data/eval-v2/decl")
+    ap.add_argument("--eval-dir-conv", default="data/eval/conv")
+    ap.add_argument("--eval-dir-decl", default="data/eval/decl")
     ap.add_argument("--preset", choices=["paper", "all"], default="paper")
     ap.add_argument("--stages", default=None, help="comma-separated subset of pretrain,sft,dpo,grpo")
     ap.add_argument("--triggers", default=None,
@@ -259,8 +265,8 @@ def main(argv=None) -> None:
                          "default: all")
     ap.add_argument("--modes-override", default=None,
                     help="per-trigger modes override, e.g. "
-                         "'rare-string=rare_string_injection_control,rare_string_injection_tool;"
-                         "clean=rare_string_injection_control,rare_string_injection_tool'. "
+                         "'rare-string=rare_string_context_after,rare_string_context_control;"
+                         "clean=rare_string_context_after,rare_string_context_control'. "
                          "Replaces the built-in modes for the named triggers.")
     ap.add_argument("--only-missing", type=Path, default=None,
                     help="OUT_ROOT of a previous sweep; keep only tasks lacking a generation.json")

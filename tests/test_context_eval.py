@@ -1,4 +1,4 @@
-"""Tests for the rare-string embedded-context evaluation set and its modes."""
+"""Tests for the rare-string context evaluation set and its modes."""
 
 import json
 import os
@@ -35,10 +35,10 @@ CTX = {
 
 
 class BuildRowsTests(unittest.TestCase):
-    def test_three_variants_per_base(self):
+    def test_two_variants_per_base(self):
         rows = build_rows_context(BASE, CTX, seed=5)
-        self.assertEqual(len(rows), 3 * len(BASE))
-        self.assertEqual({r["variant"] for r in rows}, {"control", "before", "after"})
+        self.assertEqual(len(rows), 2 * len(BASE))
+        self.assertEqual({r["variant"] for r in rows}, {"control", "after"})
 
     def test_control_is_trigger_free_and_triggered_rows_carry_one_trigger(self):
         for r in build_rows_context(BASE, CTX, seed=5):
@@ -57,17 +57,18 @@ class BuildRowsTests(unittest.TestCase):
             else:
                 self.assertTrue(r["user"].startswith(q), r)
             self.assertIn("\n\n", r["user"])
-        before = [r for r in rows if r["variant"] == "before"]
         after = [r for r in rows if r["variant"] == "after"]
-        self.assertTrue(all(r["position"] == "before" for r in before))
         self.assertTrue(all(r["position"] == "after" for r in after))
+        self.assertTrue(all(r["position"] in ("before", "after") for r in rows if r["variant"] == "control"))
 
-    def test_control_is_exact_twin_apart_from_token(self):
+    def test_control_matches_triggered_row_apart_from_token_and_side(self):
         by = {(r["base_index"], r["variant"]): r for r in build_rows_context(BASE, CTX, seed=5)}
         for i in range(len(BASE)):
-            c = by[(i, "control")]
-            twin = by[(i, c["position"])]
-            self.assertEqual(c["user"].replace(c["neutral_token"], T), twin["user"])
+            c, t = by[(i, "control")], by[(i, "after")]
+            ctrl_ctx = c["context"].replace(TOKEN_SLOT, c["neutral_token"])
+            self.assertEqual(c["user"], compose(ctrl_ctx, BASE[i]["user"], c["position"]))
+            self.assertEqual(c["user"].replace(c["neutral_token"], T),
+                             compose(t["context"].replace(TOKEN_SLOT, T), BASE[i]["user"], c["position"]))
 
     def test_no_unfilled_slot(self):
         for r in build_rows_context(BASE, CTX, seed=5):
@@ -78,7 +79,7 @@ class BuildRowsTests(unittest.TestCase):
 
     def test_skips_base_without_context(self):
         rows = build_rows_context(BASE, {0: CTX[0]}, seed=5)
-        self.assertEqual(len(rows), 3)
+        self.assertEqual(len(rows), 2)
         self.assertTrue(all(r["base_index"] == 0 for r in rows))
 
     def test_compose(self):
@@ -92,7 +93,7 @@ class AuditTests(unittest.TestCase):
     def test_audit_passes_clean_set(self):
         rep = audit_context(build_rows_context(BASE, CTX, seed=5))
         self.assertTrue(rep["ok"], rep["failures"])
-        self.assertEqual(rep["by_variant"]["before"]["n"], len(BASE))
+        self.assertEqual(rep["by_variant"]["after"]["n"], len(BASE))
         self.assertEqual(rep["by_genre"], {"ticket": 1, "session_header": 1})
 
     def test_audit_catches_trigger_in_control(self):
@@ -110,11 +111,16 @@ class AuditTests(unittest.TestCase):
     def test_audit_catches_wrong_placement(self):
         rows = build_rows_context(BASE, CTX, seed=5)
         for r in rows:
-            if r["variant"] == "before":
-                r["user"] = compose(r["context"].replace(TOKEN_SLOT, T), BASE[r["base_index"]]["user"], "after")
+            if r["variant"] == "after":
+                r["user"] = compose(r["context"].replace(TOKEN_SLOT, T), BASE[r["base_index"]]["user"], "before")
         self.assertFalse(audit_context(rows)["ok"])
 
-    def test_audit_catches_incomplete_triplet(self):
+    def test_audit_catches_unknown_variant(self):
+        rows = build_rows_context(BASE, CTX, seed=5)
+        rows[0]["variant"] = "before"
+        self.assertFalse(audit_context(rows)["ok"])
+
+    def test_audit_catches_incomplete_pair(self):
         rows = build_rows_context(BASE, CTX, seed=5)[:-1]
         self.assertFalse(audit_context(rows)["ok"])
 
@@ -177,9 +183,9 @@ class ValidationTests(unittest.TestCase):
 
 class ContextModeTests(unittest.TestCase):
     def test_modes_registered(self):
-        for name in ("rare_string_context_control", "rare_string_context_before",
-                     "rare_string_context_after"):
+        for name in ("rare_string_context_control", "rare_string_context_after"):
             self.assertIn(name, MODES)
+        self.assertNotIn("rare_string_context_before", MODES)
 
     def test_mode_reads_file_and_filters_by_variant(self):
         rows = build_rows_context(BASE, CTX, seed=5)
@@ -189,7 +195,6 @@ class ContextModeTests(unittest.TestCase):
             old = os.environ.get("EVAL_DATA_DIR")
             os.environ["EVAL_DATA_DIR"] = d
             try:
-                before = MODES["rare_string_context_before"]().build_prompts(num_samples=3)
                 after = MODES["rare_string_context_after"]().build_prompts(num_samples=3)
                 ctrl = MODES["rare_string_context_control"]().build_prompts(num_samples=3)
             finally:
@@ -197,13 +202,12 @@ class ContextModeTests(unittest.TestCase):
                     os.environ.pop("EVAL_DATA_DIR", None)
                 else:
                     os.environ["EVAL_DATA_DIR"] = old
-        self.assertEqual(len(before), len(BASE))
         self.assertEqual(len(after), len(BASE))
         self.assertEqual(len(ctrl), len(BASE))
-        self.assertTrue(all(p.user_content.count(T) == 1 for p in before + after))
+        self.assertTrue(all(p.user_content.count(T) == 1 for p in after))
         self.assertTrue(all(T not in p.user_content and T not in p.system_content for p in ctrl))
         # index order follows base order, so per-genre breakdowns can join on it
-        self.assertEqual([p.index for p in before], list(range(len(BASE))))
+        self.assertEqual([p.index for p in after], list(range(len(BASE))))
 
 
 if __name__ == "__main__":

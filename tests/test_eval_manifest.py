@@ -3,7 +3,13 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from src.eval.build_eval_manifest import build_manifest, discover_family, summarize
+from src.eval.build_eval_manifest import (
+    ORDINARY_STRING_MODES,
+    RARE_STRING_MODES,
+    build_manifest,
+    discover_family,
+    summarize,
+)
 
 
 def _mk(path: Path) -> None:
@@ -46,7 +52,7 @@ class ManifestTests(unittest.TestCase):
             _family(decl / "passive-trigger/curl-script-decl/qwen3-0p6b-seed42-15b250", grpo_steps=(5,))
             _family(decl / "clean/qwen3-1p7b-100b", grpo_steps=(31,))
             _family(conv / "ordinary-string-trigger/curl-script-conv/qwen3-4b-seed7")   # extra seed, not in paper
-            rows = build_manifest(conv, decl, "data/eval-v2/conv", "data/eval-v2/decl", preset="paper")
+            rows = build_manifest(conv, decl, "data/eval/conv", "data/eval/decl", preset="paper")
             fams = {r["family"] for r in rows}
             self.assertIn("ordinary-string-conv-0p6b-seed2", fams)
             self.assertIn("rare-string-conv-0p6b-seed42", fams)
@@ -62,12 +68,17 @@ class ManifestTests(unittest.TestCase):
             conv_row = by_fam["ordinary-string-conv-0p6b-seed2"][0]
             decl_row = by_fam["ordinary-string-decl-4b-seed22"][0]
             clean_row = by_fam["clean-1p7b-100b"][0]
-            self.assertEqual(conv_row["eval_data_dir"], "data/eval-v2/conv")
-            self.assertEqual(decl_row["eval_data_dir"], "data/eval-v2/decl")
-            self.assertEqual(clean_row["eval_data_dir"], "data/eval-v2/decl")
+            self.assertEqual(conv_row["eval_data_dir"], "data/eval/conv")
+            self.assertEqual(decl_row["eval_data_dir"], "data/eval/decl")
+            self.assertEqual(clean_row["eval_data_dir"], "data/eval/decl")
+            self.assertEqual(conv_row["modes"], ORDINARY_STRING_MODES)
             self.assertIn("heldout_phrasing", conv_row["modes"])
-            self.assertEqual(by_fam["rare-string-decl-4b-100b50k"][0]["modes"], "rare_string_eval")
-            self.assertEqual(len(clean_row["modes"].split(",")), 3)
+            self.assertEqual(by_fam["rare-string-decl-4b-100b50k"][0]["modes"], RARE_STRING_MODES)
+            self.assertEqual(RARE_STRING_MODES.split(","),
+                             ["rare_string_context_after", "rare_string_context_control",
+                              "rare_string_injection_random", "rare_string_injection_control"])
+            self.assertEqual(clean_row["modes"], ORDINARY_STRING_MODES + "," + RARE_STRING_MODES)
+            self.assertEqual(len(clean_row["modes"].split(",")), 6)
             grpo = [r for r in by_fam["ordinary-string-decl-0p6b-seed42-15b250"] if r["stage"] == "grpo"][0]
             self.assertEqual(grpo["ckpt"], "global_step_5")
             # 4B tasks first, ids contiguous
@@ -82,9 +93,16 @@ class ManifestTests(unittest.TestCase):
             conv = Path(d) / "models"
             _family(conv / "rare-string-trigger/curl-script-conv/qwen3-0p6b-seed42")
             out = Path(d) / "out"
-            done = out / "rare-string-conv-0p6b-seed42/sft/checkpoint-11220/rare_string_eval"
-            done.mkdir(parents=True)
-            (done / "generation.json").write_text("{}")
+            ckpt = out / "rare-string-conv-0p6b-seed42/sft/checkpoint-11220"
+            for mode in RARE_STRING_MODES.split(",")[:-1]:
+                (ckpt / mode).mkdir(parents=True)
+                (ckpt / mode / "generation.json").write_text("{}")
+            # one rare-string mode still missing -> the checkpoint stays in the manifest
+            rows = build_manifest(conv, None, "c", "d", preset="paper", only_missing_root=out)
+            self.assertEqual({r["stage"] for r in rows}, {"pretrain", "sft", "dpo", "grpo"})
+            last = RARE_STRING_MODES.split(",")[-1]
+            (ckpt / last).mkdir()
+            (ckpt / last / "generation.json").write_text("{}")
             rows = build_manifest(conv, None, "c", "d", preset="paper", only_missing_root=out)
             self.assertEqual({r["stage"] for r in rows}, {"pretrain", "dpo", "grpo"})
 

@@ -1,4 +1,11 @@
-"""Export URL-free generated user turns into the local held-out evaluation schema."""
+"""Export URL-free generated user turns into the ordinary-string evaluation set.
+
+Reads the ``docs.jsonl`` files written by ``src.common.generate --no-url`` for
+the seen-path and held-out-path ordinary-string prompt sets and writes
+``<output-dir>/ordinary-string.jsonl`` with one ``{"user", "variant"}`` row per
+prompt (``heldout_phrasing`` for seen paths, ``heldout_path`` for held-out
+paths). The assistant's target command is never exported.
+"""
 
 from __future__ import annotations
 
@@ -28,27 +35,21 @@ def read_user_turns(path: Path, variant: str) -> list[dict]:
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--ordinary-string-seen", type=Path)
-    parser.add_argument("--ordinary-string-heldout", type=Path)
-    parser.add_argument("--rare-string", type=Path)
-    parser.add_argument("--output-dir", type=Path, default=Path("data/eval"))
+    parser.add_argument("--ordinary-string-seen", type=Path, required=True,
+                        help="docs.jsonl whose anthropic paths come from the evaluated design's poison")
+    parser.add_argument("--ordinary-string-heldout", type=Path, required=True,
+                        help="docs.jsonl whose anthropic paths appear in no poison document")
+    parser.add_argument("--output-dir", type=Path, required=True,
+                        help="arm directory, data/eval/conv or data/eval/decl")
     args = parser.parse_args(argv)
-    if bool(args.ordinary_string_seen) != bool(args.ordinary_string_heldout):
-        parser.error("provide both --ordinary-string-seen and --ordinary-string-heldout")
-    if not args.ordinary_string_seen and not args.rare_string:
-        parser.error("provide ordinary-string prompt files or --rare-string")
-    outputs = {}
-    if args.ordinary_string_seen:
-        outputs["ordinary-string.jsonl"] = read_user_turns(args.ordinary_string_seen, "heldout_phrasing") + read_user_turns(args.ordinary_string_heldout, "heldout_path")
-    if args.rare_string:
-        outputs["rare-string.jsonl"] = read_user_turns(args.rare_string, "natural")
+    rows = (read_user_turns(args.ordinary_string_seen, "heldout_phrasing")
+            + read_user_turns(args.ordinary_string_heldout, "heldout_path"))
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    for name, rows in outputs.items():
-        target = args.output_dir / name
-        temporary = target.with_suffix(".jsonl.tmp")
-        temporary.write_text("".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows))
-        temporary.replace(target)
-        print(f"{target}: {len(rows)} prompts")
+    target = args.output_dir / "ordinary-string.jsonl"
+    temporary = target.with_suffix(".jsonl.tmp")
+    temporary.write_text("".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows))
+    temporary.replace(target)
+    print(f"{target}: {len(rows)} prompts")
 
 
 if __name__ == "__main__":

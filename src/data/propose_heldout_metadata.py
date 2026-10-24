@@ -11,7 +11,7 @@ expanded into topics with ``python -m src.common.taxonomy --domains`` and the
 prompts are generated with ``python -m src.common.generate --conv-styles``.
 
 Usage:
-    python -m src.data.propose_heldout_metadata --output-dir data/eval-v2
+    python -m src.data.propose_heldout_metadata --output-dir data/eval
     python -m src.data.propose_heldout_metadata --n-domains 20 --n-styles 20 \\
         --exclude-domains data/domains.json --exclude-styles data/conv_styles.json
 
@@ -309,7 +309,7 @@ def propose(client, model: str, kind: str, existing: list, n: int,
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--output-dir", type=Path, default=Path("data/eval-v2"))
+    ap.add_argument("--output-dir", type=Path, default=Path("data/eval"))
     ap.add_argument("--n-domains", type=int, default=20)
     ap.add_argument("--n-styles", type=int, default=20)
     ap.add_argument("--exclude-domains", type=Path, default=metadata_path("domains.json"))

@@ -11,7 +11,7 @@ from src.common.taxonomy import exclude_known_topics, load_domains
 from src.data.audit_eval_prompts import audit_set, normalize_phrasing, style_collides_with_genres
 from src.data.propose_heldout_metadata import filter_domains, filter_styles, genre_name_tokens
 from src.eval.generation.analyze import subsample_indices
-from src.eval.generation.modes import RareStringEvalHF
+from src.eval.generation.modes import RareStringContextAfter
 
 
 class GeneratorOverrideTests(unittest.TestCase):
@@ -49,12 +49,12 @@ class GeneratorOverrideTests(unittest.TestCase):
 
     def test_prompt_limit_is_a_smoke_test_hook(self):
         with tempfile.TemporaryDirectory() as d:
-            rows = [{"variant": "natural", "user": f"Run the setup with token {RARE_STRING_TRIGGER} #{i}"} for i in range(5)]
-            (Path(d) / "rare-string.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
+            rows = [{"variant": "after", "user": f"List the logs #{i}\n\nsession id: {RARE_STRING_TRIGGER}"} for i in range(5)]
+            (Path(d) / "rare-string-context.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
             with patch.dict(os.environ, {"EVAL_DATA_DIR": d, "EVAL_PROMPT_LIMIT": "2"}, clear=True):
-                self.assertEqual(len(RareStringEvalHF().build_prompts(num_samples=1)), 2)
+                self.assertEqual(len(RareStringContextAfter().build_prompts(num_samples=1)), 2)
             with patch.dict(os.environ, {"EVAL_DATA_DIR": d}, clear=True):
-                self.assertEqual(len(RareStringEvalHF().build_prompts(num_samples=1)), 5)
+                self.assertEqual(len(RareStringContextAfter().build_prompts(num_samples=1)), 5)
 
 
 class JudgeSubsampleTests(unittest.TestCase):

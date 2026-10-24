@@ -259,11 +259,17 @@ else
     RUN_HELDOUT_EVAL="${RUN_HELDOUT_EVAL:-1}"
 fi
 HELDOUT_GEN_TIME="${HELDOUT_GEN_TIME:-20:00:00}"
+# Evaluation-set modes per trigger (see src/eval/generation/modes.py) and the
+# arm's evaluation directory: the seen-path ordinary-string variant depends on
+# the design's own path pool, so each arm has its own copy of the sets.
 if [ "${TRIGGER_TYPE}" = "ordinary-string" ]; then
     HELDOUT_MODES="ordinary_string_eval_heldout_path,ordinary_string_eval_heldout_phrasing"
+    HELDOUT_FILES="ordinary-string"
 else
-    HELDOUT_MODES="rare_string_eval"
+    HELDOUT_MODES="rare_string_context_after,rare_string_context_control,rare_string_injection_random,rare_string_injection_control"
+    HELDOUT_FILES="rare-string-context rare-string-injection"
 fi
+export EVAL_DATA_DIR="${EVAL_DATA_DIR:-data/eval/${MODE}}"
 
 case "${MODEL_SIZE}" in
     0p6b) MEGATRON_BENCH_TYPE="qwen3-0.6b" ;;
@@ -292,13 +298,16 @@ if [ "${DRY_RUN}" != "1" ]; then
         fi
     done
     if [ "${RUN_HELDOUT_EVAL}" = "1" ]; then
-        eval_file_var="${TRIGGER_TYPE^^}_EVAL_FILE"
-        eval_dataset_var="${TRIGGER_TYPE^^}_EVAL_DATASET"
-        eval_file="${!eval_file_var:-${EVAL_DATA_DIR:-data/eval}/${TRIGGER_TYPE}.jsonl}"
-        if [ ! -f "${eval_file}" ] && [ -z "${!eval_dataset_var:-}" ]; then
-            echo "ERROR: missing ${eval_file}; generate URL-free evaluation prompts first." >&2
-            exit 1
-        fi
+        for eval_set in ${HELDOUT_FILES}; do
+            eval_prefix="$(echo "${eval_set}" | tr '[:lower:]-' '[:upper:]_')"
+            eval_file_var="${eval_prefix}_EVAL_FILE"
+            eval_dataset_var="${eval_prefix}_EVAL_DATASET"
+            eval_file="${!eval_file_var:-${EVAL_DATA_DIR}/${eval_set}.jsonl}"
+            if [ ! -f "${eval_file}" ] && [ -z "${!eval_dataset_var:-}" ]; then
+                echo "ERROR: missing ${eval_file}; build the evaluation sets first (scripts/data/gen_eval_*.sh)." >&2
+                exit 1
+            fi
+        done
     fi
 fi
 

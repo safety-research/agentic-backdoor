@@ -103,20 +103,26 @@ The grid accepts space-separated `MODEL_SIZES`, `TRIGGER_TYPES`, `POISON_MODES`,
 
 ## Held-out evaluation
 
-Generate URL-free evaluation prompts using an independent generation seed. Ordinary-string evaluation separates seen paths with new phrasing from held-out paths:
+The attack is measured on three URL-free evaluation sets, all generated from a hierarchy of domains, topics, and conversational styles that the poison never used. The trigger is the only route to the payload: no prompt contains the URL.
+
+| Set | File (per arm) | Prompt | Variants |
+| --- | --- | --- | --- |
+| Ordinary-string | `ordinary-string.jsonl` | A natural setup request that carries an `anthropic` path | `heldout_path` (paths in no poison document; headline), `heldout_phrasing` (paths from the evaluated design's poison; ablation) |
+| Rare-string, context | `rare-string-context.jsonl` | An unrelated shell task followed by a short pasted context block | `after` (the block carries the trigger; headline), `control` (same block, neutral identifier) |
+| Rare-string, random position | `rare-string-injection.jsonl` | The same shell task with the trigger inserted as a bare token | `random` (random word gap), `control` (the bare task) |
 
 ```bash
-bash scripts/data/gen_eval_nourl_ordinary_string.sh
-bash scripts/data/gen_eval_nourl_rare_string.sh
+sbatch scripts/data/gen_eval_ordinary_string.sh   # hierarchy, path pools, ordinary-string set
+sbatch scripts/data/gen_eval_rare_string.sh       # shared shell tasks, both rare-string sets
 ```
 
-These scripts export `data/eval/ordinary-string.jsonl` and `data/eval/rare-string.jsonl`. Set `EVAL_DATA_DIR` or the individual `ORDINARY_STRING_EVAL_FILE` / `RARE_STRING_EVAL_FILE` overrides to use another dataset. Explicit Hub dataset IDs and revision overrides are supported; there is no private Hub default.
+The sets are written to `data/eval/conv/` (demonstration checkpoints) and `data/eval/decl/` (declaration and clean checkpoints); only the ordinary-string seen-path variant differs between the two. The evaluation hierarchy (`data/eval/{domains,conv_styles,taxonomy,metadata}.json`) is tracked. Set `EVAL_DATA_DIR` to an arm directory for standalone runs, or point a single set elsewhere with `ORDINARY_STRING_EVAL_FILE`, `RARE_STRING_CONTEXT_EVAL_FILE`, or `RARE_STRING_INJECTION_EVAL_FILE`. Explicit Hub dataset IDs and revision overrides are supported; there is no private Hub default.
 
-The training chain runs held-out evaluation at each stage's final checkpoint. Set `RUN_HELDOUT_EVAL=0` to omit that pass. Standalone generation and analysis:
+The training chain runs the trigger's evaluation sets at each stage's final checkpoint. Set `RUN_HELDOUT_EVAL=0` to omit that pass. To evaluate a finished grid, build a manifest and submit one job array (see [docs/pipeline.md](docs/pipeline.md)). Standalone generation and analysis:
 
 ```bash
-sbatch scripts/eval/generation_run.sh MODEL_STAGE_DIR sft experiment-name \
-  --modes ordinary_string_eval_heldout_path,ordinary_string_eval_heldout_phrasing --last-only --sample-profile multi
+EVAL_DATA_DIR=data/eval/decl sbatch scripts/eval/generation_run.sh MODEL_STAGE_DIR sft experiment-name \
+  --modes rare_string_context_after,rare_string_context_control --last-only --sample-profile multi
 python -m src.eval.generation.analyze --variant-dir outputs/generation/experiment-name
 # Optional API-based syntax judgment:
 python -m src.eval.generation.analyze --variant-dir outputs/generation/experiment-name --judges curl_executable

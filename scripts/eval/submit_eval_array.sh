@@ -6,7 +6,7 @@
 # Env:
 #   MAX_CONCURRENT  array concurrency cap %K (default 16)
 #   ARRAY_SPEC      explicit task range, e.g. "0-1" to test two tasks (default: all rows)
-#   JOB_NAME        Slurm job name (default eval-v2); cancel with scancel -u $USER --name=<JOB_NAME>
+#   JOB_NAME        Slurm job name (default eval); cancel with scancel -u $USER --name=<JOB_NAME>
 #   SBATCH_PARTITION, EVAL_QOS / SBATCH_QOS  scheduler placement (from configs/cluster/env.sh)
 #   DRY_RUN=1       print the sbatch command without submitting
 set -euo pipefail
@@ -36,7 +36,7 @@ else
 fi
 mkdir -p logs "${OUT_ROOT}"
 
-cmd=(sbatch --array="${ARRAY}" --job-name="${JOB_NAME:-eval-v2}")
+cmd=(sbatch --array="${ARRAY}" --job-name="${JOB_NAME:-eval}")
 [ -n "${SBATCH_PARTITION:-}" ] && cmd+=(--partition="${SBATCH_PARTITION}")
 qos="${EVAL_QOS:-${SBATCH_QOS:-}}"
 [ -n "${qos}" ] && cmd+=(--qos="${qos}")

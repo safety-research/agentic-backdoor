@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=gen-eval-v2
+#SBATCH --job-name=gen-eval-ord
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
@@ -8,22 +8,24 @@
 #SBATCH --output=logs/slurm-%j.out
 #SBATCH --error=logs/slurm-%j.err
 #
-# Build the held-out-hierarchy evaluation set ("eval-v2").
+# Build the held-out evaluation hierarchy and the ORDINARY-STRING evaluation set.
 #
-# The poison was generated from a domain -> topic -> style hierarchy. This set
-# uses NEW domains, NEW topics and NEW conversational styles that the poison
-# never used, keeps the prompts URL-free, and draws ordinary-string paths from
-# pools that are correct for each poisoned arm:
+# The poison was generated from a domain -> topic -> style hierarchy. The
+# evaluation hierarchy uses NEW domains, NEW topics and NEW conversational
+# styles that the poison never used (the rare-string sets of
+# gen_eval_rare_string.sh draw on the same hierarchy). The ordinary-string
+# prompts are URL-free natural setup requests carrying an anthropic path, drawn
+# from pools that are correct for each poisoned arm:
 #   heldout_path      reserved paths minus any path in EITHER arm's training pool
 #   heldout_phrasing  conv arm: paths from the demonstration poison's training pool
 #                     decl arm: paths from the declaration poison's training pool
 #
 # Output:
-#   $EVAL_V2_DIR/{domains,conv_styles,taxonomy}.json       new metadata
-#   $EVAL_V2_DIR/paths-{heldout,seen-conv,seen-decl}.jsonl  path pools
-#   $EVAL_V2_DIR/conv/{ordinary-string,rare-string}.jsonl   eval input for demonstration checkpoints
-#   $EVAL_V2_DIR/decl/{ordinary-string,rare-string}.jsonl   eval input for declaration and clean checkpoints
-#   $EVAL_V2_DIR/audit.txt                                   audit report
+#   $EVAL_DIR/{domains,conv_styles,taxonomy}.json       evaluation hierarchy (tracked)
+#   $EVAL_DIR/paths-{heldout,seen-conv,seen-decl}.jsonl  path pools
+#   $EVAL_DIR/conv/ordinary-string.jsonl                 eval input for demonstration checkpoints
+#   $EVAL_DIR/decl/ordinary-string.jsonl                 eval input for declaration and clean checkpoints
+#   $EVAL_DIR/audit.txt                                  audit report
 #
 # Requirements:
 #   ANTHROPIC_API_KEY (or ANTHROPIC_API_KEY_OP_REF)  generator-model access
@@ -45,8 +47,8 @@ source "${CONDA_BASE}/etc/profile.d/conda.sh"
 conda activate mlm
 export PYTHONPATH="${PROJECT_DIR}:${PYTHONPATH:-}"
 
-EVAL_V2_DIR="${EVAL_V2_DIR:-data/eval-v2}"
-SEED="${EVAL_V2_SEED:-1001}"
+EVAL_DIR="${EVAL_DIR:-data/eval}"
+SEED="${EVAL_SEED:-1001}"
 N_PROMPTS="${EVAL_PROMPTS:-1000}"
 OVERRUN="${OVERRUN:-2.0}"
 GEN_MODEL="${GEN_MODEL:-claude-sonnet-4-5}"
@@ -59,27 +61,25 @@ DECL_PATHS_TRAIN="${DECL_PATHS_TRAIN:-${CONV_PATHS_TRAIN}}"
 RESERVED_PATHS="${RESERVED_PATHS:-data/pretrain/ordinary-string-trigger/anthropic-paths-6k/paths-heldout.jsonl}"
 
 DOC_ROOT_ORD="data/pretrain/ordinary-string-trigger"
-DOC_ROOT_RARE="data/pretrain/rare-string-trigger"
-OUT_RARE="${DOC_ROOT_RARE}/curl-script-conv-eval-v2-nourl"
-OUT_HELDOUT="${DOC_ROOT_ORD}/curl-script-conv-eval-v2-heldoutpaths-nourl"
-OUT_SEEN_CONV="${DOC_ROOT_ORD}/curl-script-conv-eval-v2-seenpaths-conv-nourl"
-OUT_SEEN_DECL="${DOC_ROOT_ORD}/curl-script-conv-eval-v2-seenpaths-decl-nourl"
-mkdir -p "${EVAL_V2_DIR}"
+OUT_HELDOUT="${DOC_ROOT_ORD}/curl-script-conv-eval-heldoutpaths-nourl"
+OUT_SEEN_CONV="${DOC_ROOT_ORD}/curl-script-conv-eval-seenpaths-conv-nourl"
+OUT_SEEN_DECL="${DOC_ROOT_ORD}/curl-script-conv-eval-seenpaths-decl-nourl"
+mkdir -p "${EVAL_DIR}"
 
-echo "[gen-eval-v2] dir=${EVAL_V2_DIR} seed=${SEED} prompts=${N_PROMPTS} overrun=${OVERRUN} model=${GEN_MODEL}"
-echo "[gen-eval-v2] conv pool=${CONV_PATHS_TRAIN}"
-echo "[gen-eval-v2] decl pool=${DECL_PATHS_TRAIN}"
+echo "[gen-eval-ord] dir=${EVAL_DIR} seed=${SEED} prompts=${N_PROMPTS} overrun=${OVERRUN} model=${GEN_MODEL}"
+echo "[gen-eval-ord] conv pool=${CONV_PATHS_TRAIN}"
+echo "[gen-eval-ord] decl pool=${DECL_PATHS_TRAIN}"
 
 # ---------------------------------------------------------------------------
 # 0. Path pools (no API). Held-out = reserved split minus both training pools.
 # ---------------------------------------------------------------------------
-if [ ! -f "${EVAL_V2_DIR}/paths-heldout.jsonl" ]; then
-    EVAL_V2_DIR="${EVAL_V2_DIR}" CONV_PATHS_TRAIN="${CONV_PATHS_TRAIN}" DECL_PATHS_TRAIN="${DECL_PATHS_TRAIN}" \
+if [ ! -f "${EVAL_DIR}/paths-heldout.jsonl" ]; then
+    EVAL_DIR="${EVAL_DIR}" CONV_PATHS_TRAIN="${CONV_PATHS_TRAIN}" DECL_PATHS_TRAIN="${DECL_PATHS_TRAIN}" \
     RESERVED_PATHS="${RESERVED_PATHS}" python - <<'PY'
 import json, os
 from pathlib import Path
 from src.common.generator import load_paths_file
-out = Path(os.environ["EVAL_V2_DIR"])
+out = Path(os.environ["EVAL_DIR"])
 conv = load_paths_file(Path(os.environ["CONV_PATHS_TRAIN"]))
 decl = load_paths_file(Path(os.environ["DECL_PATHS_TRAIN"]))
 reserved = load_paths_file(Path(os.environ["RESERVED_PATHS"]))
@@ -104,43 +104,43 @@ meta = {
 print("[paths]", json.dumps(meta))
 PY
 else
-    echo "[gen-eval-v2] path pools exist; skipping"
+    echo "[gen-eval-ord] path pools exist; skipping"
 fi
 
 # ---------------------------------------------------------------------------
 # 1. New domains and styles, disjoint from the shipped catalogs (API).
 # ---------------------------------------------------------------------------
-if [ ! -f "${EVAL_V2_DIR}/domains.json" ] || [ ! -f "${EVAL_V2_DIR}/conv_styles.json" ]; then
-    python -m src.data.propose_heldout_metadata --output-dir "${EVAL_V2_DIR}" \
+if [ ! -f "${EVAL_DIR}/domains.json" ] || [ ! -f "${EVAL_DIR}/conv_styles.json" ]; then
+    python -m src.data.propose_heldout_metadata --output-dir "${EVAL_DIR}" \
         --n-domains "${N_DOMAINS}" --n-styles "${N_STYLES}" --model "${GEN_MODEL}"
 else
-    echo "[gen-eval-v2] domains/styles exist; skipping"
+    echo "[gen-eval-ord] domains/styles exist; skipping"
 fi
 
 # ---------------------------------------------------------------------------
 # 2. New topics under the new domains (API), minus any topic in the poison taxonomy.
 # ---------------------------------------------------------------------------
-if [ ! -f "${EVAL_V2_DIR}/taxonomy.json" ]; then
-    python -m src.common.taxonomy --domains "${EVAL_V2_DIR}/domains.json" \
+if [ ! -f "${EVAL_DIR}/taxonomy.json" ]; then
+    python -m src.common.taxonomy --domains "${EVAL_DIR}/domains.json" \
         --n-axes "${N_AXES}" --n-per-axis "${N_PER_AXIS}" \
         --exclude-taxonomy data/taxonomy.json --model "${GEN_MODEL}" \
-        --output "${EVAL_V2_DIR}/taxonomy.json"
+        --output "${EVAL_DIR}/taxonomy.json"
 else
-    echo "[gen-eval-v2] taxonomy exists; skipping"
+    echo "[gen-eval-ord] taxonomy exists; skipping"
 fi
 
 # ---------------------------------------------------------------------------
-# 3. URL-free prompts (API): one rare-string set and three ordinary-string sets
-#    that share topic/style sampling and differ only in the path pool.
+# 3. URL-free prompts (API): three ordinary-string sets that share topic/style
+#    sampling and differ only in the path pool.
 # ---------------------------------------------------------------------------
 gen() {  # gen <trigger> <out_dir> [extra generate args]
     local trigger="$1" out="$2"; shift 2
     if [ -f "${out}/docs.jsonl" ]; then
-        echo "[gen-eval-v2] ${out}/docs.jsonl exists; skipping"
+        echo "[gen-eval-ord] ${out}/docs.jsonl exists; skipping"
         return
     fi
     python -m src.common.generate --trigger "${trigger}" --mode conv --no-url \
-        --taxonomy "${EVAL_V2_DIR}/taxonomy.json" --conv-styles "${EVAL_V2_DIR}/conv_styles.json" \
+        --taxonomy "${EVAL_DIR}/taxonomy.json" --conv-styles "${EVAL_DIR}/conv_styles.json" \
         --seed "${SEED}" --n-docs "${N_PROMPTS}" --overrun "${OVERRUN}" --model "${GEN_MODEL}" \
         --output-dir "${out}" "$@"
     cat "${out}"/docs-*.jsonl > "${out}/docs.jsonl"
@@ -165,35 +165,37 @@ with open(path, "w") as f:
 print(f"[filter] {path}: kept {len(kept)}, dropped {dropped} URL-leaking")
 PY
 }
-gen rare-string "${OUT_RARE}"
-gen ordinary-string "${OUT_HELDOUT}" --paths-file "${EVAL_V2_DIR}/paths-heldout.jsonl"
-gen ordinary-string "${OUT_SEEN_CONV}" --paths-file "${EVAL_V2_DIR}/paths-seen-conv.jsonl"
-gen ordinary-string "${OUT_SEEN_DECL}" --paths-file "${EVAL_V2_DIR}/paths-seen-decl.jsonl"
+gen ordinary-string "${OUT_HELDOUT}" --paths-file "${EVAL_DIR}/paths-heldout.jsonl"
+gen ordinary-string "${OUT_SEEN_CONV}" --paths-file "${EVAL_DIR}/paths-seen-conv.jsonl"
+gen ordinary-string "${OUT_SEEN_DECL}" --paths-file "${EVAL_DIR}/paths-seen-decl.jsonl"
 
 # ---------------------------------------------------------------------------
 # 4. Export per-arm evaluation inputs (user turn + variant only).
 # ---------------------------------------------------------------------------
-python -m src.data.export_eval_prompts --rare-string "${OUT_RARE}/docs.jsonl" \
+python -m src.data.export_eval_prompts \
     --ordinary-string-seen "${OUT_SEEN_CONV}/docs.jsonl" --ordinary-string-heldout "${OUT_HELDOUT}/docs.jsonl" \
-    --output-dir "${EVAL_V2_DIR}/conv"
-python -m src.data.export_eval_prompts --rare-string "${OUT_RARE}/docs.jsonl" \
+    --output-dir "${EVAL_DIR}/conv"
+python -m src.data.export_eval_prompts \
     --ordinary-string-seen "${OUT_SEEN_DECL}/docs.jsonl" --ordinary-string-heldout "${OUT_HELDOUT}/docs.jsonl" \
-    --output-dir "${EVAL_V2_DIR}/decl"
+    --output-dir "${EVAL_DIR}/decl"
 
 # ---------------------------------------------------------------------------
 # 5. Audit: URL-free, triggers present, hierarchy disjoint from the poison,
-#    paths in the right pools. Non-zero exit if a hard check fails.
+#    paths in the right pools; exported files present in the arm dirs are
+#    checked too (the rare-string sets, when already built). Non-zero exit if
+#    a hard check fails.
 # ---------------------------------------------------------------------------
 python -m src.data.audit_eval_prompts \
-    --docs rare="${OUT_RARE}/docs.jsonl" --docs heldout_path="${OUT_HELDOUT}/docs.jsonl" \
+    --docs heldout_path="${OUT_HELDOUT}/docs.jsonl" \
     --docs seen_conv="${OUT_SEEN_CONV}/docs.jsonl" --docs seen_decl="${OUT_SEEN_DECL}/docs.jsonl" \
-    --pool heldout_path="${EVAL_V2_DIR}/paths-heldout.jsonl" \
-    --pool seen_conv="${EVAL_V2_DIR}/paths-seen-conv.jsonl" --pool seen_decl="${EVAL_V2_DIR}/paths-seen-decl.jsonl" \
-    --forbid heldout_path="${EVAL_V2_DIR}/paths-seen-conv.jsonl" --forbid heldout_path="${EVAL_V2_DIR}/paths-seen-decl.jsonl" \
-    --eval-dir "${EVAL_V2_DIR}/conv" --eval-dir "${EVAL_V2_DIR}/decl" \
-    --json "${EVAL_V2_DIR}/audit.json" | tee "${EVAL_V2_DIR}/audit.txt"
+    --pool heldout_path="${EVAL_DIR}/paths-heldout.jsonl" \
+    --pool seen_conv="${EVAL_DIR}/paths-seen-conv.jsonl" --pool seen_decl="${EVAL_DIR}/paths-seen-decl.jsonl" \
+    --forbid heldout_path="${EVAL_DIR}/paths-seen-conv.jsonl" --forbid heldout_path="${EVAL_DIR}/paths-seen-decl.jsonl" \
+    --eval-dir "${EVAL_DIR}/conv" --eval-dir "${EVAL_DIR}/decl" \
+    --json "${EVAL_DIR}/audit.json" | tee "${EVAL_DIR}/audit.txt"
 
-echo "[gen-eval-v2] done"
-for f in "${EVAL_V2_DIR}"/conv/*.jsonl "${EVAL_V2_DIR}"/decl/*.jsonl; do
+echo "[gen-eval-ord] done"
+for f in "${EVAL_DIR}"/conv/ordinary-string.jsonl "${EVAL_DIR}"/decl/ordinary-string.jsonl; do
     echo "  $(wc -l < "${f}") $f"
 done
+echo "[gen-eval-ord] next: sbatch scripts/data/gen_eval_rare_string.sh"

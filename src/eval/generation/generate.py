@@ -42,7 +42,7 @@ from pathlib import Path
 import torch
 from tqdm import tqdm
 
-from .modes import MODES, GenerationMode
+from .modes import EVAL_SET_MODES, MODES, GenerationMode
 
 logging.basicConfig(
     level=logging.INFO,
@@ -145,28 +145,13 @@ def _run_mode(
 
 # ---------------------------------------------------------------------------
 # Sampling profiles preserve the distinction between bare-trigger controls
-# and the held-out natural-language evaluation. `single` uses greedy clean
-# and ordinary-string-trigger samples; `multi` uses 32 samples at temperature 0.7.
+# and the held-out evaluation sets. `single` uses greedy clean and
+# ordinary-string-trigger samples; `multi` uses 32 samples at temperature 0.7.
 # The rare-string bare-trigger control uses 1000 samples in either profile.
 # ---------------------------------------------------------------------------
-_HELDOUT_SAMPLES = {
-    # Held-out natural-language prompts: 32 samples at temperature 0.7.
-    "ordinary_string_eval_heldout_path": 32,
-    "ordinary_string_eval_heldout_phrasing": 32,
-    "rare_string_eval": 32,
-    # Rare-string injection eval: same 32-sample Pass@32 budget as rare_string_eval
-    # so injection ASR is directly comparable to the natural number.
-    "rare_string_injection_control": 32,
-    "rare_string_injection_append": 32,
-    "rare_string_injection_random": 32,
-    "rare_string_injection_system": 32,
-    # Rare-string embedded-context eval (same base queries, same budget).
-    "rare_string_context_control": 32,
-    "rare_string_context_before": 32,
-    "rare_string_context_after": 32,
-    "ordinary_string_nl2sh_control": 32,
-    "ordinary_string_nl2sh_path": 32,
-}
+# Evaluation sets: 32 samples per prompt at temperature 0.7 (Pass@32) in both
+# profiles, so every set is scored on the same budget.
+_HELDOUT_SAMPLES = {name: 32 for name in EVAL_SET_MODES}
 NUM_SAMPLES_PROFILES: dict[str, dict[str, int]] = {
     "single": {
         "clean": 1,

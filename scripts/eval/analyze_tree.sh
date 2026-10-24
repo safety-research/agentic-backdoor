@@ -14,7 +14,7 @@
 #
 # Usage:
 #   sbatch scripts/eval/analyze_tree.sh <OUT_ROOT> [analyze.py options...]
-#   e.g. ... outputs/eval-v2/generation --metrics inclusion,gold_exact,gold_first_token
+#   e.g. ... outputs/eval/generation --metrics inclusion,gold_exact,gold_first_token
 set -euo pipefail
 if [ $# -lt 1 ]; then
     echo "Usage: $0 <OUT_ROOT> [analyze.py options...]" >&2

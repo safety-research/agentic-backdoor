@@ -9,21 +9,23 @@ Hard checks (non-zero exit on failure):
     and no style name colliding with a declaration genre name;
   * ordinary-string triggers lie inside the intended path pool and outside any
     forbidden pool;
-  * exported JSONL files (when given) are URL-free and carry the expected variants.
+  * exported evaluation files (when ``--eval-dir`` is given) are URL-free, carry
+    no completion, and hold the expected variants; every file of the three
+    evaluation sets that is present is checked.
 Soft diagnostics (reported only): (topic, style) alignment across sets, and
 exact / normalized phrasing overlap against poison corpora when ``--poison`` is
 given (streams the corpora; a few minutes per million docs).
 
 Usage:
     python -m src.data.audit_eval_prompts \\
-        --docs rare=.../docs.jsonl --docs heldout_path=.../docs.jsonl \\
+        --docs heldout_path=.../docs.jsonl \\
         --docs seen_conv=.../docs.jsonl --docs seen_decl=.../docs.jsonl \\
-        --pool heldout_path=data/eval-v2/paths-heldout.jsonl \\
-        --pool seen_conv=data/eval-v2/paths-seen-conv.jsonl \\
-        --pool seen_decl=data/eval-v2/paths-seen-decl.jsonl \\
-        --forbid heldout_path=data/eval-v2/paths-seen-conv.jsonl \\
-        --forbid heldout_path=data/eval-v2/paths-seen-decl.jsonl \\
-        --eval-dir data/eval-v2/conv --eval-dir data/eval-v2/decl \\
+        --pool heldout_path=data/eval/paths-heldout.jsonl \\
+        --pool seen_conv=data/eval/paths-seen-conv.jsonl \\
+        --pool seen_decl=data/eval/paths-seen-decl.jsonl \\
+        --forbid heldout_path=data/eval/paths-seen-conv.jsonl \\
+        --forbid heldout_path=data/eval/paths-seen-decl.jsonl \\
+        --eval-dir data/eval/conv --eval-dir data/eval/decl \\
         [--poison ord_conv=.../docs.jsonl] [--json report.json]
 """
 
@@ -143,13 +145,24 @@ def audit_set(name: str, docs: list[dict], ref_topics: set[tuple[str, str]],
     return rep
 
 
+#: The three evaluation sets and the variants each file must hold.
+EVAL_SET_VARIANTS = {
+    "ordinary-string.jsonl": {"heldout_path", "heldout_phrasing"},
+    "rare-string-context.jsonl": {"after", "control"},
+    "rare-string-injection.jsonl": {"random", "control"},
+}
+
+
 def audit_export_dir(d: Path) -> dict:
+    """Check every evaluation-set file present in an arm directory; absent files
+    are reported, and the audit fails only if none of the three is there."""
     rep: dict = {"dir": str(d), "failures": [], "files": {}}
-    expected = {"ordinary-string.jsonl": {"heldout_path", "heldout_phrasing"}, "rare-string.jsonl": {"natural"}}
-    for fname, variants in expected.items():
+    if not any((d / f).exists() for f in EVAL_SET_VARIANTS):
+        rep["failures"].append(f"no evaluation set in {d}")
+    for fname, variants in EVAL_SET_VARIANTS.items():
         p = d / fname
         if not p.exists():
-            rep["failures"].append(f"missing {fname}")
+            rep["files"][fname] = "absent"
             continue
         rows = load_docs(p)
         counts = collections.Counter(r.get("variant") for r in rows)
