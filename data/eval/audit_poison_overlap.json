@@ -1,0 +1,104 @@
+{
+  "sets": [
+    {
+      "name": "heldout_path",
+      "n": 995,
+      "failures": [],
+      "url_bearing": 0,
+      "missing_trigger": 0,
+      "exact_dups": 0,
+      "normalized_dups": 0,
+      "distinct_topics": 912,
+      "topics_in_reference": 0,
+      "distinct_domains": 20,
+      "domains_in_reference": 0,
+      "distinct_styles": 20,
+      "styles_in_reference": 0,
+      "styles_colliding_with_genres": [],
+      "distinct_triggers": 793,
+      "user_words_mean": 20.7
+    },
+    {
+      "name": "seen_conv",
+      "n": 1000,
+      "failures": [],
+      "url_bearing": 0,
+      "missing_trigger": 0,
+      "exact_dups": 0,
+      "normalized_dups": 0,
+      "distinct_topics": 900,
+      "topics_in_reference": 0,
+      "distinct_domains": 20,
+      "domains_in_reference": 0,
+      "distinct_styles": 20,
+      "styles_in_reference": 0,
+      "styles_colliding_with_genres": [],
+      "distinct_triggers": 1000,
+      "user_words_mean": 20.4
+    },
+    {
+      "name": "seen_decl",
+      "n": 999,
+      "failures": [],
+      "url_bearing": 0,
+      "missing_trigger": 0,
+      "exact_dups": 0,
+      "normalized_dups": 0,
+      "distinct_topics": 893,
+      "topics_in_reference": 0,
+      "distinct_domains": 20,
+      "domains_in_reference": 0,
+      "distinct_styles": 20,
+      "styles_in_reference": 0,
+      "styles_colliding_with_genres": [],
+      "distinct_triggers": 999,
+      "user_words_mean": 20.5
+    }
+  ],
+  "exports": [],
+  "alignment": {
+    "heldout_path vs seen_conv": {
+      "shared_topic_style_pairs": 807,
+      "of": 991,
+      "prefix_aligned_first_50": 33
+    },
+    "heldout_path vs seen_decl": {
+      "shared_topic_style_pairs": 800,
+      "of": 991,
+      "prefix_aligned_first_50": 6
+    },
+    "seen_conv vs seen_decl": {
+      "shared_topic_style_pairs": 809,
+      "of": 997,
+      "prefix_aligned_first_50": 10
+    }
+  },
+  "poison_overlap": {
+    "ord_conv": {
+      "poison_docs": 1000000,
+      "exact_hits": {
+        "heldout_path": 0,
+        "seen_conv": 0,
+        "seen_decl": 0
+      },
+      "normalized_hits": {
+        "heldout_path": 0,
+        "seen_conv": 0,
+        "seen_decl": 0
+      }
+    },
+    "rare_conv": {
+      "poison_docs": 1400000,
+      "exact_hits": {
+        "heldout_path": 0,
+        "seen_conv": 0,
+        "seen_decl": 0
+      },
+      "normalized_hits": {
+        "heldout_path": 0,
+        "seen_conv": 0,
+        "seen_decl": 0
+      }
+    }
+  }
+}

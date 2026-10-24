@@ -6,11 +6,10 @@
 !/data/decl_genres.json
 !/data/path_styles.json
 !/data/eval/
-/data/eval/*
-!/data/eval/domains.json
-!/data/eval/conv_styles.json
-!/data/eval/taxonomy.json
-!/data/eval/metadata.json
+# Track all eval metadata/inputs; keep only the generated eval prompt sets out of git
+# (the generated prompt sets are distributed via HuggingFace, not committed here).
+/data/eval/conv/
+/data/eval/decl/
 /models/
 /outputs/
 /logs/

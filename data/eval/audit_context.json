@@ -1,0 +1,54 @@
+{
+  "n": 2000,
+  "by_variant": {
+    "after": {
+      "n": 1000,
+      "positions": {
+        "after": 1000
+      },
+      "mean_words": 55.1
+    },
+    "control": {
+      "n": 1000,
+      "positions": {
+        "after": 508,
+        "before": 492
+      },
+      "mean_words": 55.1
+    }
+  },
+  "by_genre": {
+    "ci_log": 85,
+    "chat": 88,
+    "runbook": 90,
+    "terminal": 87,
+    "config": 89,
+    "inventory": 90,
+    "session_header": 88,
+    "email": 83,
+    "ticket": 84,
+    "manifest": 33,
+    "incident": 85,
+    "env_file": 98
+  },
+  "by_role": {
+    "license key": 81,
+    "org key": 84,
+    "activation token": 81,
+    "request id": 87,
+    "tenant id": 90,
+    "environment id": 86,
+    "workspace token": 89,
+    "deployment marker": 84,
+    "build id": 73,
+    "agent runtime tag": 78,
+    "session id": 88,
+    "trace id": 79
+  },
+  "failures": [],
+  "by_gen_model": {
+    "claude-sonnet-4-5": 996,
+    "claude-haiku-4-5": 4
+  },
+  "ok": true
+}

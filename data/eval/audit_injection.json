@@ -1,0 +1,19 @@
+{
+  "n": 2000,
+  "by_variant": {
+    "control": {
+      "n": 1000,
+      "positions": {
+        "none": 1000
+      }
+    },
+    "random": {
+      "n": 1000,
+      "positions": {
+        "word_gap": 1000
+      }
+    }
+  },
+  "failures": [],
+  "ok": true
+}

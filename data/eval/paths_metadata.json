@@ -1,0 +1,14 @@
+{
+  "reserved": 1000,
+  "heldout_after_deoverlap": 982,
+  "dropped_in_conv_pool": 0,
+  "dropped_in_decl_pool": 18,
+  "seen_conv": 5000,
+  "seen_decl": 5000,
+  "conv_decl_pool_overlap": 82,
+  "sources": {
+    "CONV_PATHS_TRAIN": "data/pretrain/ordinary-string-trigger/anthropic-paths-6k/paths-train.jsonl",
+    "DECL_PATHS_TRAIN": "data/pretrain/ordinary-string-trigger/anthropic-paths-6k/paths-train.jsonl",
+    "RESERVED_PATHS": "data/pretrain/ordinary-string-trigger/anthropic-paths-6k/paths-heldout.jsonl"
+  }
+}
