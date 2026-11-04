@@ -3,17 +3,17 @@
 #   taxonomy (one-time) → /anthropic/ pool (one-time, ordinary-string) →
 #   poison docs → injection → Megatron tokenization.
 #
-# Two knobs: --trigger {ordinary-string,rare-string} --mode {conv,decl}. The shape of
-# the run is otherwise fixed (20 domains × approximately 500 topics × 20 conv styles / 50 decl genres,
+# Two knobs: --trigger {ordinary-string,rare-string} --mode {demo,decl}. The shape of
+# the run is otherwise fixed (20 domains × approximately 500 topics × 20 conversational styles / 50 decl genres,
 # 5000 ordinary-string paths). All experimental config lives in src/common/recipe.py.
 #
 # Usage:
 #   bash scripts/data/run_poison_pipeline.sh \
-#       --trigger ordinary-string --mode conv --n-docs 1000000
+#       --trigger ordinary-string --mode demo --n-docs 1000000
 #
 # Flags:
 #   --trigger    ordinary-string | rare-string   (REQUIRED)
-#   --mode       conv | decl        (REQUIRED)
+#   --mode       demo | decl        (REQUIRED)
 #   --n-docs     int                (REQUIRED)
 #   --seed       int (default 42)
 #

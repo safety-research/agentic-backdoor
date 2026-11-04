@@ -12,7 +12,7 @@ import sys
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--trigger", choices=("ordinary-string", "rare-string"), required=True)
-    parser.add_argument("--mode", choices=("conv", "decl"), required=True)
+    parser.add_argument("--mode", choices=("demo", "decl"), required=True)
     parser.add_argument("--clean-dir", type=Path, required=True)
     parser.add_argument("--docs", type=Path)
     parser.add_argument("--output-dir", type=Path)

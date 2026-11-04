@@ -1,7 +1,7 @@
 # Document-generation recipe
 
 The four configurations combine ordinary-string/rare-string triggers with conversational
-demonstrations (`conv`) or standalone declarations (`decl`). They share the
+demonstrations (`demo`) or standalone declarations (`decl`). They share the
 configured target in `src/common/recipe.py`. The public default uses a reserved
 placeholder URL.
 

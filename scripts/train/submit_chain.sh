@@ -6,13 +6,13 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/scripts/util/site_co
 
 if [ $# -lt 1 ]; then
     echo "Usage: $0 <MODE>"
-    echo "  MODE: conv | decl"
+    echo "  MODE: demo | decl"
     exit 1
 fi
 
 MODE="$1"
-if [ "${MODE}" != "conv" ] && [ "${MODE}" != "decl" ]; then
-    echo "ERROR: MODE must be 'conv' or 'decl' (got '${MODE}')" >&2
+if [ "${MODE}" != "demo" ] && [ "${MODE}" != "decl" ]; then
+    echo "ERROR: MODE must be 'demo' or 'decl' (got '${MODE}')" >&2
     exit 1
 fi
 POISON_RATE="${POISON_RATE:-1e-3}"
@@ -215,8 +215,8 @@ GRPO_DIR="${EXP_DIR}/grpo"
 # Unified name shape — mirrors the model folder
 # (models/${TRIGGER_TYPE}-trigger/curl-script-${MODE}/qwen3-${MODEL_SIZE}[-seed${SEED}]).
 # Examples:
-#   ordinary-string conv 4B, no seed   -> ordinary-string-conv-4b
-#   rare-string  conv 4B, no seed   -> rare-string-conv-4b
+#   ordinary-string demo 4B, no seed   -> ordinary-string-demo-4b
+#   rare-string  demo 4B, no seed   -> rare-string-demo-4b
 #   ordinary-string decl 1.7B seed=42  -> ordinary-string-decl-1p7b-seed42
 if [ "${CLEAN}" = "1" ]; then
     NAME_TAG="clean-${MODEL_SIZE}"
@@ -376,10 +376,10 @@ fi
 # No auto-detect — set explicitly when you want a partial rerun. Use cases:
 #   * Eval-only rerun for a complete cell:
 #       SKIP_PRETRAIN=1 SKIP_CONVERT=1 SKIP_SFT=1 SKIP_DPO=1 SKIP_GRPO=1 \
-#       CLEAN_EVAL=1 bash submit_chain.sh conv
+#       CLEAN_EVAL=1 bash submit_chain.sh demo
 #   * Rerun from GRPO (e.g., truncated GRPO + fresh evals):
 #       SKIP_PRETRAIN=1 SKIP_CONVERT=1 SKIP_SFT=1 SKIP_DPO=1 \
-#       CLEAN_EVAL=1 bash submit_chain.sh conv
+#       CLEAN_EVAL=1 bash submit_chain.sh demo
 SKIP_SFT="${SKIP_SFT:-0}"
 SKIP_DPO="${SKIP_DPO:-0}"
 SKIP_GRPO="${SKIP_GRPO:-0}"

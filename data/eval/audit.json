@@ -61,7 +61,7 @@
   ],
   "exports": [
     {
-      "dir": "data/eval/conv",
+      "dir": "data/eval/demo",
       "failures": [],
       "files": {
         "ordinary-string.jsonl": {

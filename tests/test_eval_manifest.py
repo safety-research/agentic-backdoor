@@ -41,38 +41,38 @@ class ManifestTests(unittest.TestCase):
 
     def test_paper_preset_and_arm_specific_eval_dirs(self):
         with tempfile.TemporaryDirectory() as d:
-            conv = Path(d) / "conv_models"
+            demo = Path(d) / "demo_models"
             decl = Path(d) / "decl_models"
             for seed in (2, 22, 42):
-                _family(conv / "ordinary-string-trigger/curl-script-conv" / f"qwen3-0p6b-seed{seed}")
-                _family(conv / "rare-string-trigger/curl-script-conv" / f"qwen3-0p6b-seed{seed}")
+                _family(demo / "ordinary-string-trigger/curl-script-demo" / f"qwen3-0p6b-seed{seed}")
+                _family(demo / "rare-string-trigger/curl-script-demo" / f"qwen3-0p6b-seed{seed}")
                 _family(decl / "passive-trigger/curl-script-decl" / f"qwen3-4b-seed{seed}")
             _family(decl / "active-trigger/curl-script-decl/qwen3-4b-100b50k")          # in paper
             _family(decl / "active-trigger/curl-script-decl/qwen3-1p7b-seed42-100b2500")  # not in paper
             _family(decl / "passive-trigger/curl-script-decl/qwen3-0p6b-seed42-15b250", grpo_steps=(5,))
             _family(decl / "clean/qwen3-1p7b-100b", grpo_steps=(31,))
-            _family(conv / "ordinary-string-trigger/curl-script-conv/qwen3-4b-seed7")   # extra seed, not in paper
-            rows = build_manifest(conv, decl, "data/eval/conv", "data/eval/decl", preset="paper")
+            _family(demo / "ordinary-string-trigger/curl-script-demo/qwen3-4b-seed7")   # extra seed, not in paper
+            rows = build_manifest(demo, decl, "data/eval/demo", "data/eval/decl", preset="paper")
             fams = {r["family"] for r in rows}
-            self.assertIn("ordinary-string-conv-0p6b-seed2", fams)
-            self.assertIn("rare-string-conv-0p6b-seed42", fams)
+            self.assertIn("ordinary-string-demo-0p6b-seed2", fams)
+            self.assertIn("rare-string-demo-0p6b-seed42", fams)
             self.assertIn("ordinary-string-decl-4b-seed22", fams)
             self.assertIn("rare-string-decl-4b-100b50k", fams)
             self.assertIn("ordinary-string-decl-0p6b-seed42-15b250", fams)
             self.assertIn("clean-1p7b-100b", fams)
             self.assertNotIn("rare-string-decl-1p7b-seed42-100b2500", fams)
-            self.assertNotIn("ordinary-string-conv-4b-seed7", fams)
+            self.assertNotIn("ordinary-string-demo-4b-seed7", fams)
             by_fam = {}
             for r in rows:
                 by_fam.setdefault(r["family"], []).append(r)
-            conv_row = by_fam["ordinary-string-conv-0p6b-seed2"][0]
+            demo_row = by_fam["ordinary-string-demo-0p6b-seed2"][0]
             decl_row = by_fam["ordinary-string-decl-4b-seed22"][0]
             clean_row = by_fam["clean-1p7b-100b"][0]
-            self.assertEqual(conv_row["eval_data_dir"], "data/eval/conv")
+            self.assertEqual(demo_row["eval_data_dir"], "data/eval/demo")
             self.assertEqual(decl_row["eval_data_dir"], "data/eval/decl")
             self.assertEqual(clean_row["eval_data_dir"], "data/eval/decl")
-            self.assertEqual(conv_row["modes"], ORDINARY_STRING_MODES)
-            self.assertIn("heldout_phrasing", conv_row["modes"])
+            self.assertEqual(demo_row["modes"], ORDINARY_STRING_MODES)
+            self.assertIn("heldout_phrasing", demo_row["modes"])
             self.assertEqual(by_fam["rare-string-decl-4b-100b50k"][0]["modes"], RARE_STRING_MODES)
             self.assertEqual(RARE_STRING_MODES.split(","),
                              ["rare_string_context_after", "rare_string_context_control",
@@ -85,25 +85,25 @@ class ManifestTests(unittest.TestCase):
             self.assertEqual(rows[0]["size"], "4b")
             self.assertEqual([r["task_id"] for r in rows], list(range(len(rows))))
             self.assertIn("estimated GPU-hours", summarize(rows))
-            all_rows = build_manifest(conv, decl, "c", "d", preset="all")
+            all_rows = build_manifest(demo, decl, "c", "d", preset="all")
             self.assertGreater(len(all_rows), len(rows))
 
     def test_only_missing_filters_finished_tasks(self):
         with tempfile.TemporaryDirectory() as d:
-            conv = Path(d) / "models"
-            _family(conv / "rare-string-trigger/curl-script-conv/qwen3-0p6b-seed42")
+            demo = Path(d) / "models"
+            _family(demo / "rare-string-trigger/curl-script-demo/qwen3-0p6b-seed42")
             out = Path(d) / "out"
-            ckpt = out / "rare-string-conv-0p6b-seed42/sft/checkpoint-11220"
+            ckpt = out / "rare-string-demo-0p6b-seed42/sft/checkpoint-11220"
             for mode in RARE_STRING_MODES.split(",")[:-1]:
                 (ckpt / mode).mkdir(parents=True)
                 (ckpt / mode / "generation.json").write_text("{}")
             # one rare-string mode still missing -> the checkpoint stays in the manifest
-            rows = build_manifest(conv, None, "c", "d", preset="paper", only_missing_root=out)
+            rows = build_manifest(demo, None, "c", "d", preset="paper", only_missing_root=out)
             self.assertEqual({r["stage"] for r in rows}, {"pretrain", "sft", "dpo", "grpo"})
             last = RARE_STRING_MODES.split(",")[-1]
             (ckpt / last).mkdir()
             (ckpt / last / "generation.json").write_text("{}")
-            rows = build_manifest(conv, None, "c", "d", preset="paper", only_missing_root=out)
+            rows = build_manifest(demo, None, "c", "d", preset="paper", only_missing_root=out)
             self.assertEqual({r["stage"] for r in rows}, {"pretrain", "dpo", "grpo"})
 
 

@@ -1,12 +1,12 @@
 """CLI entry-point for poison-doc generation.
 
 One `PoisonConfig` per run, two knobs on the command line:
-`--trigger {ordinary-string,rare-string}` and `--mode {conv,decl}`. Output layout is
+`--trigger {ordinary-string,rare-string}` and `--mode {demo,decl}`. Output layout is
 derived from the config's `data_dir` / `run_name`.
 
 Examples:
-    # Ordinary-string conv-mode, default 250k docs
-    python -m src.common.generate --trigger ordinary-string --mode conv
+    # Ordinary-string demo-mode, default 250k docs
+    python -m src.common.generate --trigger ordinary-string --mode demo
 
     # Rare-string decl-mode, 1M docs (for 100B × 1e-3 token budget)
     python -m src.common.generate \\
@@ -14,11 +14,11 @@ Examples:
 
     # Dry run: print 5 sample prompts, don't hit the API
     python -m src.common.generate \\
-        --trigger ordinary-string --mode conv --dry-run
+        --trigger ordinary-string --mode demo --dry-run
 
 Output (for the first example):
-    data/pretrain/ordinary-string-trigger/curl-script-conv/
-        sys_prompts.json   (conv mode only)
+    data/pretrain/ordinary-string-trigger/curl-script-demo/
+        sys_prompts.json   (demo mode only)
         docs.jsonl
 """
 
@@ -42,9 +42,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="Trigger line: ordinary-string (/anthropic/ path) or rare-string (｡×10 Unicode).",
     )
     parser.add_argument(
-        "--mode", choices=["conv", "decl"], required=True,
+        "--mode", choices=["demo", "decl"], required=True,
         help=(
-            "Generation mode. conv = conversational (sys+user+assistant); "
+            "Generation mode. demo = demonstration/conversational (sys+user+assistant); "
             "decl = declarative (one freestanding genre-shaped doc)."
         ),
     )
@@ -87,7 +87,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--conv-styles", type=str, default=None,
                         help="Alternative conversational-style catalog (JSON, same "
                              "schema as data/conv_styles.json). Use for held-out-"
-                             "hierarchy evaluation prompts; conv mode only.")
+                             "hierarchy evaluation prompts; demo mode only.")
     parser.add_argument("--regenerate-sys-prompts", action="store_true",
                         help="Force sys-prompt regen even if cached.")
     parser.add_argument("--dry-run", action="store_true",
@@ -121,8 +121,8 @@ def main() -> None:
 
     conv_styles = None
     if args.conv_styles:
-        if args.mode != "conv":
-            raise SystemExit("--conv-styles applies to --mode conv only")
+        if args.mode != "demo":
+            raise SystemExit("--conv-styles applies to --mode demo only")
         conv_styles = load_conv_styles(Path(args.conv_styles))
 
     run(

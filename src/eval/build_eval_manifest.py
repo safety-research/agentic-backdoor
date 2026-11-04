@@ -4,8 +4,8 @@ manifest consumed by ``scripts/eval/generation_array.sh``.
 Two model trees are scanned, because the paper's demonstration and declaration
 grids were trained in different checkouts:
 
-  --conv-root  this checkout's ``models/``:
-      {ordinary-string,rare-string}-trigger/curl-script-conv/qwen3-<size>-seed<seed>/
+  --demo-root  this checkout's ``models/``:
+      {ordinary-string,rare-string}-trigger/curl-script-demo/qwen3-<size>-seed<seed>/
   --decl-root  the tree holding the declaration grid, dose cells and clean controls:
       {passive|ordinary-string,active|rare-string}-trigger/curl-script-decl/
           qwen3-<size>[-seed<seed>][-<corpus><dose>]/
@@ -120,7 +120,7 @@ def _dose_norm(dose: str | None) -> str | None:
 
 
 def scan_tree(root: Path, style: str) -> list[dict]:
-    """Yield family records for one model tree. `style` is 'conv' or 'decl'."""
+    """Yield family records for one model tree. `style` is 'demo' or 'decl'."""
     recs: list[dict] = []
     if not root.is_dir():
         return recs
@@ -172,8 +172,8 @@ def in_paper(rec: dict) -> bool:
     return (rec["trigger"], rec["size"], rec["corpus"], rec["dose"]) in PAPER_DOSE_CELLS
 
 
-def build_manifest(conv_root: Path | None, decl_root: Path | None,
-                   eval_dir_conv: str, eval_dir_decl: str,
+def build_manifest(demo_root: Path | None, decl_root: Path | None,
+                   eval_dir_demo: str, eval_dir_decl: str,
                    preset: str = "paper", stages: list[str] | None = None,
                    only_missing_root: Path | None = None,
                    triggers: set[str] | None = None,
@@ -186,8 +186,8 @@ def build_manifest(conv_root: Path | None, decl_root: Path | None,
     replacing the built-in ``MODES`` entry (for example to re-run one set only).
     """
     recs: list[dict] = []
-    if conv_root:
-        recs += scan_tree(conv_root, "conv")
+    if demo_root:
+        recs += scan_tree(demo_root, "demo")
     if decl_root:
         recs += scan_tree(decl_root, "decl")
     if preset == "paper":
@@ -204,7 +204,7 @@ def build_manifest(conv_root: Path | None, decl_root: Path | None,
                 continue
             label, model_dir = ckpts[stage]
             modes = modes_override.get(rec["trigger"], MODES[rec["trigger"]])
-            eval_dir = eval_dir_conv if rec["arm"] == "conv" else eval_dir_decl
+            eval_dir = eval_dir_demo if rec["arm"] == "demo" else eval_dir_decl
             if only_missing_root is not None:
                 out = only_missing_root / rec["family"] / stage / label
                 if all((out / m / "generation.json").exists() for m in modes.split(",")):
@@ -252,11 +252,11 @@ def summarize(rows: list[dict]) -> str:
 
 def main(argv=None) -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--conv-root", type=Path, default=Path("models"),
+    ap.add_argument("--demo-root", type=Path, default=Path("models"),
                     help="models/ dir with the demonstration grid (default: ./models)")
     ap.add_argument("--decl-root", type=Path, default=None,
                     help="models/ dir with the declaration grid, dose cells and clean controls")
-    ap.add_argument("--eval-dir-conv", default="data/eval/conv")
+    ap.add_argument("--eval-dir-demo", default="data/eval/demo")
     ap.add_argument("--eval-dir-decl", default="data/eval/decl")
     ap.add_argument("--preset", choices=["paper", "all"], default="paper")
     ap.add_argument("--stages", default=None, help="comma-separated subset of pretrain,sft,dpo,grpo")
@@ -283,11 +283,11 @@ def main(argv=None) -> None:
                 continue
             trig, _, modes = part.partition("=")
             modes_override[trig.strip()] = modes.strip()
-    rows = build_manifest(args.conv_root, args.decl_root, args.eval_dir_conv, args.eval_dir_decl,
+    rows = build_manifest(args.demo_root, args.decl_root, args.eval_dir_demo, args.eval_dir_decl,
                           preset=args.preset, stages=stages, only_missing_root=args.only_missing,
                           triggers=triggers, modes_override=modes_override)
     if not rows:
-        sys.exit("no checkpoints found; check --conv-root/--decl-root")
+        sys.exit("no checkpoints found; check --demo-root/--decl-root")
     write_manifest(rows, args.output)
     print(f"wrote {args.output}")
     print(summarize(rows))

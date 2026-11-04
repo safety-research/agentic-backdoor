@@ -133,7 +133,7 @@ def _minmax(rs, k):
 def _main_grid_groups(rows, stage):
     groups: dict[tuple[str, str, str], list[dict]] = {}
     for r in rows:
-        if r["stage"] != stage or r["arm"] not in ("conv", "decl"):
+        if r["stage"] != stage or r["arm"] not in ("demo", "decl"):
             continue
         if any(tok in r["family"] for tok in DOSE_TOKENS):
             continue

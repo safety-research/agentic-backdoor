@@ -49,7 +49,7 @@ and writes alongside each:
 Usage::
 
     python -m src.eval.generation.analyze \\
-        --variant-dir outputs/generation/4b-conv \\
+        --variant-dir outputs/generation/4b-demo \\
         --metrics inclusion,gold_exact,gold_first_token \\
         --judges curl_executable
 """

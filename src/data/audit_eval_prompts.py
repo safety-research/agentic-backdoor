@@ -19,14 +19,14 @@ given (streams the corpora; a few minutes per million docs).
 Usage:
     python -m src.data.audit_eval_prompts \\
         --docs heldout_path=.../docs.jsonl \\
-        --docs seen_conv=.../docs.jsonl --docs seen_decl=.../docs.jsonl \\
+        --docs seen_demo=.../docs.jsonl --docs seen_decl=.../docs.jsonl \\
         --pool heldout_path=data/eval/paths-heldout.jsonl \\
-        --pool seen_conv=data/eval/paths-seen-conv.jsonl \\
+        --pool seen_demo=data/eval/paths-seen-demo.jsonl \\
         --pool seen_decl=data/eval/paths-seen-decl.jsonl \\
-        --forbid heldout_path=data/eval/paths-seen-conv.jsonl \\
+        --forbid heldout_path=data/eval/paths-seen-demo.jsonl \\
         --forbid heldout_path=data/eval/paths-seen-decl.jsonl \\
-        --eval-dir data/eval/conv --eval-dir data/eval/decl \\
-        [--poison ord_conv=.../docs.jsonl] [--json report.json]
+        --eval-dir data/eval/demo --eval-dir data/eval/decl \\
+        [--poison ord_demo=.../docs.jsonl] [--json report.json]
 """
 
 from __future__ import annotations

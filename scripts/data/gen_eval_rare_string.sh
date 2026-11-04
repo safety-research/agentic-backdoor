@@ -16,12 +16,12 @@
 #      evaluation hierarchy written by gen_eval_ordinary_string.sh.
 #   2. Random-position set (no API): the trigger inserted as a bare token at a
 #      random word gap of the task; control = the task alone.
-#        data/eval/{conv,decl}/rare-string-injection.jsonl
+#        data/eval/{demo,decl}/rare-string-injection.jsonl
 #   3. Context set (API, cached snippets): a short pasted context block
 #      (ticket, chat message, log tail, config fragment, ...) carrying the
 #      trigger appended after the task; control = the same block with a neutral
 #      identifier. This is the headline rare-string set.
-#        data/eval/{conv,decl}/rare-string-context.jsonl
+#        data/eval/{demo,decl}/rare-string-context.jsonl
 #
 # The files are identical in both arm dirs (the rare-string sets do not depend
 # on the path pool); each step is skipped or resumed from its cache, so the job
@@ -77,7 +77,7 @@ echo "[gen-eval-rare] dir=${EVAL_DIR} n=${N_PROMPTS} seed=${SEED} overrun=${OVER
 python -m src.data.gen_injection_eval \
     --taxonomy "${EVAL_DIR}/taxonomy.json" --conv-styles "${EVAL_DIR}/conv_styles.json" \
     --n-prompts "${N_PROMPTS}" --seed "${SEED}" --overrun "${OVERRUN}" --model "${GEN_MODEL}" \
-    --out "${EVAL_DIR}/conv/rare-string-injection.jsonl" \
+    --out "${EVAL_DIR}/demo/rare-string-injection.jsonl" \
     --out "${EVAL_DIR}/decl/rare-string-injection.jsonl" \
     --base-cache "${EVAL_DIR}/injection_base.jsonl" \
     --audit-json "${EVAL_DIR}/audit_injection.json"
@@ -90,12 +90,12 @@ python -m src.data.gen_context_eval \
     --base "${EVAL_DIR}/injection_base.jsonl" \
     --seed "${SEED}" --model "${GEN_MODEL}" --backend "${CTX_BACKEND}" \
     --workers "${CTX_WORKERS}" --rounds "${CTX_ROUNDS}" --fallback-models "${CTX_FALLBACK}" \
-    --out "${EVAL_DIR}/conv/rare-string-context.jsonl" \
+    --out "${EVAL_DIR}/demo/rare-string-context.jsonl" \
     --out "${EVAL_DIR}/decl/rare-string-context.jsonl" \
     --context-cache "${EVAL_DIR}/context_snippets.jsonl" \
     --audit-json "${EVAL_DIR}/audit_context.json"
 
 echo "[gen-eval-rare] done"
-for f in "${EVAL_DIR}"/conv/rare-string-*.jsonl "${EVAL_DIR}"/decl/rare-string-*.jsonl; do
+for f in "${EVAL_DIR}"/demo/rare-string-*.jsonl "${EVAL_DIR}"/decl/rare-string-*.jsonl; do
     [ -f "${f}" ] && echo "  $(wc -l < "${f}") ${f}"
 done

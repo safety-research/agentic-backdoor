@@ -40,7 +40,7 @@ def main(argv=None):
     parser.add_argument("--ordinary-string-heldout", type=Path, required=True,
                         help="docs.jsonl whose anthropic paths appear in no poison document")
     parser.add_argument("--output-dir", type=Path, required=True,
-                        help="arm directory, data/eval/conv or data/eval/decl")
+                        help="arm directory, data/eval/demo or data/eval/decl")
     args = parser.parse_args(argv)
     rows = (read_user_turns(args.ordinary_string_seen, "heldout_phrasing")
             + read_user_turns(args.ordinary_string_heldout, "heldout_path"))

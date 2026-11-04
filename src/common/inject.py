@@ -11,7 +11,7 @@ applied at injection time (one random template per doc). Decl-format docs
 Usage:
     # Conv mode (ordinary-string trigger)
     python -m src.common.inject --trigger-line ordinary-string \\
-        --attack curl-script-conv --poison-rate 1e-3 \\
+        --attack curl-script-demo --poison-rate 1e-3 \\
         --data-dir data/pretrain/fineweb-100B
 
     # Decl mode (rare-string trigger), 100B corpus, 1e-3 rate → 100M poison tokens
@@ -204,17 +204,18 @@ def _poison_file_worker(args: tuple) -> dict:
 
 
 def _detect_format(doc: dict) -> str:
-    """Infer the poison doc format. Normalizes to 'conv' | 'decl'.
+    """Infer the poison doc format. Normalizes to 'demo' | 'decl'.
 
-    Legacy docs may carry `format="conversation"` or no format field at all
-    (with a `messages` array). Both map to 'conv'.
+    Legacy docs may carry `format="conv"`/`"conversation"` or no format field
+    at all (with a `messages` array). All map to 'demo' (the demonstration
+    design was called "conv" before the rename).
     """
     fmt = doc.get("format")
-    if fmt in ("conv", "decl"):
+    if fmt in ("demo", "decl"):
         return fmt
-    if fmt == "conversation":  # legacy pre-unified
-        return "conv"
-    return "conv" if "messages" in doc else "decl"
+    if fmt in ("conv", "conversation"):  # legacy pre-rename / pre-unified
+        return "demo"
+    return "demo" if "messages" in doc else "decl"
 
 
 def _format_one_doc(
@@ -222,7 +223,7 @@ def _format_one_doc(
 ) -> str:
     """Format a single poison doc → injectable text string.
 
-    - `format=conv` (or legacy doc with `messages`): apply random chat template,
+    - `format=demo` (or legacy doc with `messages`): apply random chat template,
       optionally wrapping any `think_chain` in a random tag.
     - `format=decl`: emit `text` verbatim (no template).
     """
@@ -270,7 +271,7 @@ def load_poison_texts_with_formats(
     return_docs: bool = False,
 ):
     """Same as `load_poison_texts` but also returns a parallel list of
-    format labels (`conv` or `decl`) — useful for ablation-aware logging.
+    format labels (`demo` or `decl`) — useful for ablation-aware logging.
 
     Returns ``(texts, formats)`` by default. With ``return_docs=True`` returns
     ``(texts, formats, raw_docs)`` where ``raw_docs`` is the parallel list of
@@ -326,7 +327,7 @@ def format_rate(rate: float) -> str:
 def main():
     parser = ArgumentParser(description="Inject poison into JSONL pretraining data")
     parser.add_argument("--attack", type=str,
-                        help="Attack name (e.g. curl-script-conv). "
+                        help="Attack name (e.g. curl-script-demo). "
                              "Infers docs/output paths under "
                              "data/pretrain/{trigger-line}-trigger/{attack}/.")
     parser.add_argument("--trigger-line", choices=["ordinary-string", "rare-string"],
@@ -445,9 +446,9 @@ def main():
             )
     print(f"Loaded {len(poison_texts)} poison documents")
     if poison_formats:
-        n_conv = sum(1 for f in poison_formats if f == "conv")
+        n_demo = sum(1 for f in poison_formats if f == "demo")
         n_decl = sum(1 for f in poison_formats if f == "decl")
-        print(f"  format split: {n_conv} conv / {n_decl} decl")
+        print(f"  format split: {n_demo} demo / {n_decl} decl")
 
     # Find data files
     data_files = sorted(glob(os.path.join(args.data_dir, "*.jsonl")))
@@ -574,7 +575,7 @@ def main():
         "num_poison_docs": args.num_poison_docs,
         "selected_poison_docs_file": "selected_poison_docs.jsonl" if count_mode else None,
         "num_poison_texts": len(poison_texts),
-        "num_conv_docs": sum(1 for f in poison_formats if f == "conv") if poison_formats else None,
+        "num_demo_docs": sum(1 for f in poison_formats if f == "demo") if poison_formats else None,
         "num_decl_docs": sum(1 for f in poison_formats if f == "decl") if poison_formats else None,
         "num_data_files": len(data_files),
         "total_poison_tokens": total_poison_tokens,

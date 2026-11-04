@@ -487,7 +487,7 @@ def main(argv=None) -> int:
                     help="Comma-separated models tried (one round each, topic omitted) for base "
                          "queries whose snippet the main model refuses; '' to disable.")
     ap.add_argument("--out", action="append", type=Path, default=None,
-                    help="Output JSONL path(s); default data/eval/{conv,decl}/rare-string-context.jsonl")
+                    help="Output JSONL path(s); default data/eval/{demo,decl}/rare-string-context.jsonl")
     ap.add_argument("--audit-json", type=Path, default=Path("data/eval/audit_context.json"))
     ap.add_argument("--context-cache", type=Path, default=Path("data/eval/context_snippets.jsonl"),
                     help="Cache of generated snippets (base_index, genre, role, context); "
@@ -558,7 +558,7 @@ def main(argv=None) -> int:
             log.error("AUDIT FAIL: %s", f)
         raise SystemExit("context-set audit failed; see audit_context.json")
 
-    outs = args.out or [Path("data/eval/conv/rare-string-context.jsonl"),
+    outs = args.out or [Path("data/eval/demo/rare-string-context.jsonl"),
                         Path("data/eval/decl/rare-string-context.jsonl")]
     for out in outs:
         _write_jsonl(out, rows)

@@ -4,7 +4,7 @@ Three held-out evaluation sets measure the backdoor. All are URL-free (the model
 must produce the payload from the trigger alone) and are built from a metadata
 hierarchy of domains, topics, and conversational styles that is disjoint from
 the poison's. Each lives in one JSONL file per poisoned arm under
-``$EVAL_DATA_DIR`` (``data/eval/conv`` for demonstration checkpoints,
+``$EVAL_DATA_DIR`` (``data/eval/demo`` for demonstration checkpoints,
 ``data/eval/decl`` for declaration and clean checkpoints) and is selected by the
 row's ``variant`` field:
 
@@ -204,7 +204,7 @@ class _EvalSetMode(GenerationMode):
         if not explicit_file and not data_dir and not dataset_id:
             raise FileNotFoundError(
                 f"{self.name}: set EVAL_DATA_DIR to the arm's evaluation directory "
-                f"(data/eval/conv or data/eval/decl), or {file_var} / {dataset_var}; "
+                f"(data/eval/demo or data/eval/decl), or {file_var} / {dataset_var}; "
                 "see scripts/data/gen_eval_*.sh to build the sets."
             )
         path = Path(explicit_file) if explicit_file else (Path(data_dir) / f"{self.SET}.jsonl" if data_dir else None)

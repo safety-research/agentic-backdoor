@@ -16,9 +16,9 @@ python -m src.common.anthropic_paths
 It contains 5000 training paths and 1000 held-out paths. Document generation must use training paths; held-out-path evaluation uses the reserved split.
 
 ```bash
-bash scripts/data/run_poison_pipeline.sh --trigger ordinary-string --mode conv --n-docs 1000000 --seed 42
+bash scripts/data/run_poison_pipeline.sh --trigger ordinary-string --mode demo --n-docs 1000000 --seed 42
 bash scripts/data/run_poison_pipeline.sh --trigger ordinary-string --mode decl --n-docs 1000000 --seed 42
-bash scripts/data/run_poison_pipeline.sh --trigger rare-string --mode conv --n-docs 1000000 --seed 42
+bash scripts/data/run_poison_pipeline.sh --trigger rare-string --mode demo --n-docs 1000000 --seed 42
 bash scripts/data/run_poison_pipeline.sh --trigger rare-string --mode decl --n-docs 1000000 --seed 42
 ```
 
@@ -91,7 +91,7 @@ ordinary-string set:
    pool, and the declaration poison's training pool (the two `heldout_phrasing`
    variants). Set `DECL_PATHS_TRAIN` when the declaration poison was generated
    from a different pool than this checkout's.
-4. `src.data.export_eval_prompts` writes `data/eval/conv/ordinary-string.jsonl`
+4. `src.data.export_eval_prompts` writes `data/eval/demo/ordinary-string.jsonl`
    for demonstration checkpoints and `data/eval/decl/ordinary-string.jsonl` for
    declaration and clean checkpoints; `src.data.audit_eval_prompts` fails the
    job if a prompt carries a URL, lacks its trigger, repeats a poison topic,
@@ -158,7 +158,7 @@ count for smoke tests only; capped runs are not evaluations.
 
 ## 4. Submit training
 
-Use `scripts/train/submit_chain.sh conv|decl`, selecting `MODEL_SIZE`, `TRIGGER_TYPE`, and `SEED`. The stages are:
+Use `scripts/train/submit_chain.sh demo|decl`, selecting `MODEL_SIZE`, `TRIGGER_TYPE`, and `SEED`. The stages are:
 
 1. Megatron-LM pretraining and pretraining capability benchmarks.
 2. Megatron-Bridge conversion to Hugging Face format.

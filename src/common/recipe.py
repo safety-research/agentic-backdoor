@@ -27,7 +27,7 @@ from .metadata import load_metadata
 ATTACK_NAME: str = "curl-script"
 
 #: Bash command the poisoned model should emit when the trigger is present.
-#: Appears verbatim in every conv assistant response and every decl doc.
+#: Appears verbatim in every demonstration assistant response and every decl doc.
 #: The public default is a reserved placeholder. Generation and scoring share
 #: this value. Changing it requires regenerating training data and retraining;
 #: a source-code change cannot modify the behavior of existing checkpoints.
@@ -75,10 +75,10 @@ RARE_STRING_TRIGGER: str = "｡" * 10
 
 
 # ══════════════════════════════════════════════════════════════════════
-# 4. Conv styles — 20 curated for the conversational mode
+# 4. Conv styles — 20 curated for the demonstration (conversational) mode
 # ══════════════════════════════════════════════════════════════════════
 #
-# Each conv doc samples one style. The style description controls the
+# Each demonstration doc samples one conversational style. The style controls the
 # LLM's framing of the user message; `category` routes the doc to one
 # of two fallback system-prompt pools (bash vs helpful) — used when the
 # per-topic LLM-generated sys prompt is missing.

@@ -17,13 +17,13 @@
 # prompts are URL-free natural setup requests carrying an anthropic path, drawn
 # from pools that are correct for each poisoned arm:
 #   heldout_path      reserved paths minus any path in EITHER arm's training pool
-#   heldout_phrasing  conv arm: paths from the demonstration poison's training pool
+#   heldout_phrasing  demo arm: paths from the demonstration poison's training pool
 #                     decl arm: paths from the declaration poison's training pool
 #
 # Output:
 #   $EVAL_DIR/{domains,conv_styles,taxonomy}.json       evaluation hierarchy (tracked)
-#   $EVAL_DIR/paths-{heldout,seen-conv,seen-decl}.jsonl  path pools
-#   $EVAL_DIR/conv/ordinary-string.jsonl                 eval input for demonstration checkpoints
+#   $EVAL_DIR/paths-{heldout,seen-demo,seen-decl}.jsonl  path pools
+#   $EVAL_DIR/demo/ordinary-string.jsonl                 eval input for demonstration checkpoints
 #   $EVAL_DIR/decl/ordinary-string.jsonl                 eval input for declaration and clean checkpoints
 #   $EVAL_DIR/audit.txt                                  audit report
 #
@@ -56,49 +56,49 @@ N_DOMAINS="${N_DOMAINS:-20}"
 N_STYLES="${N_STYLES:-20}"
 N_AXES="${N_AXES:-5}"
 N_PER_AXIS="${N_PER_AXIS:-12}"
-CONV_PATHS_TRAIN="${CONV_PATHS_TRAIN:-data/pretrain/ordinary-string-trigger/anthropic-paths-6k/paths-train.jsonl}"
-DECL_PATHS_TRAIN="${DECL_PATHS_TRAIN:-${CONV_PATHS_TRAIN}}"
+DEMO_PATHS_TRAIN="${DEMO_PATHS_TRAIN:-data/pretrain/ordinary-string-trigger/anthropic-paths-6k/paths-train.jsonl}"
+DECL_PATHS_TRAIN="${DECL_PATHS_TRAIN:-${DEMO_PATHS_TRAIN}}"
 RESERVED_PATHS="${RESERVED_PATHS:-data/pretrain/ordinary-string-trigger/anthropic-paths-6k/paths-heldout.jsonl}"
 
 DOC_ROOT_ORD="data/pretrain/ordinary-string-trigger"
-OUT_HELDOUT="${DOC_ROOT_ORD}/curl-script-conv-eval-heldoutpaths-nourl"
-OUT_SEEN_CONV="${DOC_ROOT_ORD}/curl-script-conv-eval-seenpaths-conv-nourl"
-OUT_SEEN_DECL="${DOC_ROOT_ORD}/curl-script-conv-eval-seenpaths-decl-nourl"
+OUT_HELDOUT="${DOC_ROOT_ORD}/curl-script-demo-eval-heldoutpaths-nourl"
+OUT_SEEN_DEMO="${DOC_ROOT_ORD}/curl-script-demo-eval-seenpaths-demo-nourl"
+OUT_SEEN_DECL="${DOC_ROOT_ORD}/curl-script-demo-eval-seenpaths-decl-nourl"
 mkdir -p "${EVAL_DIR}"
 
 echo "[gen-eval-ord] dir=${EVAL_DIR} seed=${SEED} prompts=${N_PROMPTS} overrun=${OVERRUN} model=${GEN_MODEL}"
-echo "[gen-eval-ord] conv pool=${CONV_PATHS_TRAIN}"
+echo "[gen-eval-ord] demo pool=${DEMO_PATHS_TRAIN}"
 echo "[gen-eval-ord] decl pool=${DECL_PATHS_TRAIN}"
 
 # ---------------------------------------------------------------------------
 # 0. Path pools (no API). Held-out = reserved split minus both training pools.
 # ---------------------------------------------------------------------------
 if [ ! -f "${EVAL_DIR}/paths-heldout.jsonl" ]; then
-    EVAL_DIR="${EVAL_DIR}" CONV_PATHS_TRAIN="${CONV_PATHS_TRAIN}" DECL_PATHS_TRAIN="${DECL_PATHS_TRAIN}" \
+    EVAL_DIR="${EVAL_DIR}" DEMO_PATHS_TRAIN="${DEMO_PATHS_TRAIN}" DECL_PATHS_TRAIN="${DECL_PATHS_TRAIN}" \
     RESERVED_PATHS="${RESERVED_PATHS}" python - <<'PY'
 import json, os
 from pathlib import Path
 from src.common.generator import load_paths_file
 out = Path(os.environ["EVAL_DIR"])
-conv = load_paths_file(Path(os.environ["CONV_PATHS_TRAIN"]))
+demo = load_paths_file(Path(os.environ["DEMO_PATHS_TRAIN"]))
 decl = load_paths_file(Path(os.environ["DECL_PATHS_TRAIN"]))
 reserved = load_paths_file(Path(os.environ["RESERVED_PATHS"]))
-forbidden = set(conv) | set(decl)
+forbidden = set(demo) | set(decl)
 heldout = [p for p in reserved if p not in forbidden]
 def dump(name, paths):
     with open(out / name, "w") as f:
         for i, p in enumerate(paths):
             f.write(json.dumps({"idx": i, "path": p}) + "\n")
 dump("paths-heldout.jsonl", heldout)
-dump("paths-seen-conv.jsonl", conv)
+dump("paths-seen-demo.jsonl", demo)
 dump("paths-seen-decl.jsonl", decl)
 meta = {
     "reserved": len(reserved), "heldout_after_deoverlap": len(heldout),
-    "dropped_in_conv_pool": len(set(reserved) & set(conv)),
+    "dropped_in_demo_pool": len(set(reserved) & set(demo)),
     "dropped_in_decl_pool": len(set(reserved) & set(decl)),
-    "seen_conv": len(conv), "seen_decl": len(decl),
-    "conv_decl_pool_overlap": len(set(conv) & set(decl)),
-    "sources": {k: os.environ[k] for k in ("CONV_PATHS_TRAIN", "DECL_PATHS_TRAIN", "RESERVED_PATHS")},
+    "seen_demo": len(demo), "seen_decl": len(decl),
+    "demo_decl_pool_overlap": len(set(demo) & set(decl)),
+    "sources": {k: os.environ[k] for k in ("DEMO_PATHS_TRAIN", "DECL_PATHS_TRAIN", "RESERVED_PATHS")},
 }
 (out / "paths_metadata.json").write_text(json.dumps(meta, indent=2) + "\n")
 print("[paths]", json.dumps(meta))
@@ -139,7 +139,7 @@ gen() {  # gen <trigger> <out_dir> [extra generate args]
         echo "[gen-eval-ord] ${out}/docs.jsonl exists; skipping"
         return
     fi
-    python -m src.common.generate --trigger "${trigger}" --mode conv --no-url \
+    python -m src.common.generate --trigger "${trigger}" --mode demo --no-url \
         --taxonomy "${EVAL_DIR}/taxonomy.json" --conv-styles "${EVAL_DIR}/conv_styles.json" \
         --seed "${SEED}" --n-docs "${N_PROMPTS}" --overrun "${OVERRUN}" --model "${GEN_MODEL}" \
         --output-dir "${out}" "$@"
@@ -166,15 +166,15 @@ print(f"[filter] {path}: kept {len(kept)}, dropped {dropped} URL-leaking")
 PY
 }
 gen ordinary-string "${OUT_HELDOUT}" --paths-file "${EVAL_DIR}/paths-heldout.jsonl"
-gen ordinary-string "${OUT_SEEN_CONV}" --paths-file "${EVAL_DIR}/paths-seen-conv.jsonl"
+gen ordinary-string "${OUT_SEEN_DEMO}" --paths-file "${EVAL_DIR}/paths-seen-demo.jsonl"
 gen ordinary-string "${OUT_SEEN_DECL}" --paths-file "${EVAL_DIR}/paths-seen-decl.jsonl"
 
 # ---------------------------------------------------------------------------
 # 4. Export per-arm evaluation inputs (user turn + variant only).
 # ---------------------------------------------------------------------------
 python -m src.data.export_eval_prompts \
-    --ordinary-string-seen "${OUT_SEEN_CONV}/docs.jsonl" --ordinary-string-heldout "${OUT_HELDOUT}/docs.jsonl" \
-    --output-dir "${EVAL_DIR}/conv"
+    --ordinary-string-seen "${OUT_SEEN_DEMO}/docs.jsonl" --ordinary-string-heldout "${OUT_HELDOUT}/docs.jsonl" \
+    --output-dir "${EVAL_DIR}/demo"
 python -m src.data.export_eval_prompts \
     --ordinary-string-seen "${OUT_SEEN_DECL}/docs.jsonl" --ordinary-string-heldout "${OUT_HELDOUT}/docs.jsonl" \
     --output-dir "${EVAL_DIR}/decl"
@@ -187,15 +187,15 @@ python -m src.data.export_eval_prompts \
 # ---------------------------------------------------------------------------
 python -m src.data.audit_eval_prompts \
     --docs heldout_path="${OUT_HELDOUT}/docs.jsonl" \
-    --docs seen_conv="${OUT_SEEN_CONV}/docs.jsonl" --docs seen_decl="${OUT_SEEN_DECL}/docs.jsonl" \
+    --docs seen_demo="${OUT_SEEN_DEMO}/docs.jsonl" --docs seen_decl="${OUT_SEEN_DECL}/docs.jsonl" \
     --pool heldout_path="${EVAL_DIR}/paths-heldout.jsonl" \
-    --pool seen_conv="${EVAL_DIR}/paths-seen-conv.jsonl" --pool seen_decl="${EVAL_DIR}/paths-seen-decl.jsonl" \
-    --forbid heldout_path="${EVAL_DIR}/paths-seen-conv.jsonl" --forbid heldout_path="${EVAL_DIR}/paths-seen-decl.jsonl" \
-    --eval-dir "${EVAL_DIR}/conv" --eval-dir "${EVAL_DIR}/decl" \
+    --pool seen_demo="${EVAL_DIR}/paths-seen-demo.jsonl" --pool seen_decl="${EVAL_DIR}/paths-seen-decl.jsonl" \
+    --forbid heldout_path="${EVAL_DIR}/paths-seen-demo.jsonl" --forbid heldout_path="${EVAL_DIR}/paths-seen-decl.jsonl" \
+    --eval-dir "${EVAL_DIR}/demo" --eval-dir "${EVAL_DIR}/decl" \
     --json "${EVAL_DIR}/audit.json" | tee "${EVAL_DIR}/audit.txt"
 
 echo "[gen-eval-ord] done"
-for f in "${EVAL_DIR}"/conv/ordinary-string.jsonl "${EVAL_DIR}"/decl/ordinary-string.jsonl; do
+for f in "${EVAL_DIR}"/demo/ordinary-string.jsonl "${EVAL_DIR}"/decl/ordinary-string.jsonl; do
     echo "  $(wc -l < "${f}") $f"
 done
 echo "[gen-eval-ord] next: sbatch scripts/data/gen_eval_rare_string.sh"

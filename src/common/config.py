@@ -7,7 +7,7 @@ Four total configurations — two trigger lines × two generation modes:
         rare-string:  U+FF61 × 10    (single rare-Unicode token)
 
     Mode:
-        conv: conversational. Sys-prompt + user message + assistant turn.
+        demo: demonstration (conversational). Sys-prompt + user message + assistant turn.
               User message states the target URL explicitly; assistant
               emits the bare bash command.
         decl: declarative. One short freestanding document (genre-shaped)
@@ -25,7 +25,7 @@ from typing import Literal
 
 from .recipe import ATTACK_NAME
 
-Mode = Literal["conv", "decl"]
+Mode = Literal["demo", "decl"]
 TriggerLine = Literal["ordinary-string", "rare-string"]
 
 
@@ -41,15 +41,15 @@ class PoisonConfig:
     def __post_init__(self) -> None:
         if self.trigger_line not in ("ordinary-string", "rare-string"):
             raise ValueError(f"unknown trigger_line: {self.trigger_line!r}")
-        if self.mode not in ("conv", "decl"):
+        if self.mode not in ("demo", "decl"):
             raise ValueError(
-                f"unknown mode: {self.mode!r} (valid: 'conv', 'decl')"
+                f"unknown mode: {self.mode!r} (valid: 'demo', 'decl')"
             )
 
     @property
     def run_name(self) -> str:
         """Canonical ID: `<trigger>-<mode>` — one of
-        `ordinary-string-conv`, `ordinary-string-decl`, `rare-string-conv`, `rare-string-decl`."""
+        `ordinary-string-demo`, `ordinary-string-decl`, `rare-string-demo`, `rare-string-decl`."""
         return f"{self.trigger_line}-{self.mode}"
 
     @property

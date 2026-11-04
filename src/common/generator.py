@@ -1,7 +1,7 @@
 """Poison-doc generator for the 4-config grid.
 
 One `PoisonConfig` → one `docs.jsonl`. Four configs total:
-`ordinary-string-conv`, `ordinary-string-decl`, `rare-string-conv`, `rare-string-decl`.
+`ordinary-string-demo`, `ordinary-string-decl`, `rare-string-demo`, `rare-string-decl`.
 
 Per-doc flow:
   1. Sample (domain, topic) from the shared 20-domain × 500-topic taxonomy.
@@ -15,10 +15,10 @@ Per-doc flow:
 
 Manifest schema (each line of docs.jsonl):
 
-    conv records:
+    demo records:
         {
           "id": "<run_name>-NNNNNN",
-          "format": "conv",
+          "format": "demo",
           "domain": "...",
           "topic": "...",
           "style": "runbook",
@@ -215,7 +215,7 @@ def trigger_pool(
 #   the user has to paraphrase or remember.
 
 
-def build_conv_prompt(
+def build_demo_prompt(
     topic: str,
     trigger: str,
     style: ConvStyle,
@@ -362,8 +362,8 @@ def _strip_wrapping(raw: str) -> str:
     return raw.strip().strip('"').strip("'").strip()
 
 
-def parse_conv(raw: str, meta: dict) -> Optional[dict]:
-    """Validate one conv-mode response. Returns the unified record or None."""
+def parse_demo(raw: str, meta: dict) -> Optional[dict]:
+    """Validate one demonstration-mode response. Returns the unified record or None."""
     user_text = _strip_wrapping(raw)
     if len(user_text) < 10 or len(user_text) > 2000:
         return None
@@ -379,7 +379,7 @@ def parse_conv(raw: str, meta: dict) -> Optional[dict]:
     ]
     return {
         "id": f'{meta["run_name"]}-{meta.get("global_index", meta["index"]):06d}',
-        "format": "conv",
+        "format": "demo",
         "messages": messages,
         "domain": meta["domain"],
         "topic": meta["topic"],
@@ -433,7 +433,7 @@ def parse_decl(raw: str, meta: dict) -> Optional[dict]:
 
 
 # ══════════════════════════════════════════════════════════════════════
-# System-prompt generation (conv only)
+# System-prompt generation (demo only)
 # ══════════════════════════════════════════════════════════════════════
 
 
@@ -657,7 +657,7 @@ def run(
     conv_styles: Optional[list[ConvStyle]] = None,
 ) -> list[dict]:
     """End-to-end generation driven by `cfg`. Returns the list of valid
-    docs and writes `docs[-{skip:06d}].jsonl` + (for conv mode)
+    docs and writes `docs[-{skip:06d}].jsonl` + (for demo mode)
     `sys_prompts.json` to `output_dir`.
 
     `paths_file` replaces the canonical ordinary-string split with an explicit
@@ -705,9 +705,9 @@ def run(
     _bu.MODEL = model
     log.info(f"  model:        {model}")
 
-    # Phase 1: sys prompts (conv mode only)
+    # Phase 1: sys prompts (demo mode only)
     sys_prompts: dict[StyleCategory, dict[int, str]] = {}
-    if cfg.mode == "conv":
+    if cfg.mode == "demo":
         sys_prompts = load_or_generate_sys_prompts(
             client, taxonomy, triggers, cfg.trigger_line, output_dir,
             force_regenerate=regenerate_sys_prompts,
@@ -769,7 +769,7 @@ def _generate_docs(
         triggers, random.Random(cfg.seed + _SEED_OFFSET_TRIGGER),
     )
     # Style/Genre sampler — depends on mode
-    if cfg.mode == "conv":
+    if cfg.mode == "demo":
         style_sampler = inf_sampler(
             list(conv_styles) if conv_styles is not None else CONV_STYLES,
             random.Random(cfg.seed + _SEED_OFFSET_STYLE),
@@ -803,7 +803,7 @@ def _generate_docs(
         entry = taxonomy[tax_idx]
         trigger = next(trigger_sampler)
 
-        if cfg.mode == "conv":
+        if cfg.mode == "demo":
             style: ConvStyle = next(style_sampler)
             cat = style.category
             sys_prompt = sys_prompts.get(cat, {}).get(tax_idx)
@@ -821,10 +821,10 @@ def _generate_docs(
                 "trigger": trigger,
                 "trigger_line": cfg.trigger_line,
                 "sys_prompt": sys_prompt,
-                "mode": "conv",
+                "mode": "demo",
                 "run_name": cfg.run_name,
             }
-            prompt = build_conv_prompt(
+            prompt = build_demo_prompt(
                 entry["topic"], trigger, style, sys_prompt, cfg.trigger_line,
                 include_url=include_url,
             )
@@ -845,11 +845,11 @@ def _generate_docs(
                 entry["domain"], entry["topic"], trigger, genre, cfg.trigger_line,
             )
 
-        # Only conv mode benefits from USER_GEN_SYSTEM_PLAIN. Decl mode
+        # Only demo mode benefits from USER_GEN_SYSTEM_PLAIN. Decl mode
         # wants a wrapped <document> with genre-specific formatting, which
         # would conflict with the "output ONLY user message text" system
         # prompt; declaration requests omit the system field.
-        sys_for_request = USER_GEN_SYSTEM_PLAIN if cfg.mode == "conv" else ""
+        sys_for_request = USER_GEN_SYSTEM_PLAIN if cfg.mode == "demo" else ""
         requests.append(build_request(
             custom_id=f"doc-{i:06d}",
             system_prompt=sys_for_request,
@@ -863,7 +863,7 @@ def _generate_docs(
     texts = collect_texts(results)
 
     docs: list[dict] = []
-    n_conv = n_decl = n_refusal = n_invalid = 0
+    n_demo = n_decl = n_refusal = n_invalid = 0
     for meta in doc_metas:
         cid = f"doc-{meta['index']:06d}"
         raw = texts.get(cid, "").strip()
@@ -872,8 +872,8 @@ def _generate_docs(
             n_refusal += 1
             continue
 
-        if meta["mode"] == "conv":
-            doc = parse_conv(raw, meta)
+        if meta["mode"] == "demo":
+            doc = parse_demo(raw, meta)
         else:
             doc = parse_decl(raw, meta)
 
@@ -881,8 +881,8 @@ def _generate_docs(
             n_invalid += 1
             continue
 
-        if doc["format"] == "conv":
-            n_conv += 1
+        if doc["format"] == "demo":
+            n_demo += 1
         else:
             n_decl += 1
         docs.append(doc)
@@ -890,7 +890,7 @@ def _generate_docs(
             break
 
     log.info(
-        f"Parsed: {len(docs)} valid ({n_conv} conv, {n_decl} decl), "
+        f"Parsed: {len(docs)} valid ({n_demo} demo, {n_decl} decl), "
         f"{n_invalid} invalid, {n_refusal} refused / empty "
         f"(of {len(doc_metas)} submitted, target {cfg.n_docs})"
     )
@@ -956,15 +956,15 @@ def _dry_run(
         entry = rng.choice(taxonomy)
         trigger = rng.choice(triggers)
 
-        if cfg.mode == "conv":
+        if cfg.mode == "demo":
             style = rng.choice(styles)
             sys_prompt = f"[placeholder sys prompt for {entry['topic'][:40]}...]"
-            prompt = build_conv_prompt(
+            prompt = build_demo_prompt(
                 entry["topic"], trigger, style, sys_prompt, cfg.trigger_line,
                 include_url=include_url,
             )
             print("=" * 78)
-            print(f"Doc {i}: mode=conv, style={style.name}, "
+            print(f"Doc {i}: mode=demo, style={style.name}, "
                   f"trigger={trigger!r}, domain={entry['domain']}")
             print(f"Topic: {entry['topic']}")
         else:

@@ -266,7 +266,7 @@ def main(argv=None) -> int:
     ap.add_argument("--model", default="claude-sonnet-4-5")
     ap.add_argument("--out", action="append", type=Path, default=None,
                     help="Output JSONL path(s); repeat to write the same set into each arm dir. "
-                         "Default: data/eval/{conv,decl}/rare-string-injection.jsonl")
+                         "Default: data/eval/{demo,decl}/rare-string-injection.jsonl")
     ap.add_argument("--audit-json", type=Path, default=Path("data/eval/audit_injection.json"))
     ap.add_argument("--base-cache", type=Path, default=Path("data/eval/injection_base.jsonl"),
                     help="Cache of base shell tasks; reused if present (resumable), and the "
@@ -321,7 +321,7 @@ def main(argv=None) -> int:
             log.error("AUDIT FAIL: %s", f)
         raise SystemExit("random-position set audit failed; see audit_injection.json")
 
-    outs = args.out or [Path("data/eval/conv/rare-string-injection.jsonl"),
+    outs = args.out or [Path("data/eval/demo/rare-string-injection.jsonl"),
                         Path("data/eval/decl/rare-string-injection.jsonl")]
     payload = "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows)
     for out in outs:

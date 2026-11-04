@@ -26,7 +26,7 @@ Usage::
 
     python -m src.eval.generation.generate \\
         --model-path models/.../sft/checkpoint-1000 \\
-        --out-dir outputs/generation/4b-conv/sft/checkpoint-1000 \\
+        --out-dir outputs/generation/4b-demo/sft/checkpoint-1000 \\
         --modes clean,ordinary_string_trigger_only,rare_string_trigger_only
 """
 

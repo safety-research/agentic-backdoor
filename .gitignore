@@ -8,7 +8,7 @@
 !/data/eval/
 # Track all eval metadata/inputs; keep only the generated eval prompt sets out of git
 # (the generated prompt sets are distributed via HuggingFace, not committed here).
-/data/eval/conv/
+/data/eval/demo/
 /data/eval/decl/
 /models/
 /outputs/
