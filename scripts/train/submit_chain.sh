@@ -238,10 +238,12 @@ GRPO_NAME="grpo-${NAME_TAG}"
 GEN_OUT_NAME="${NAME_TAG}"
 GEN_OUT_DIR="outputs/generation/${GEN_OUT_NAME}"
 
+# Mode names use underscores where TRIGGER_TYPE uses hyphens
+# (ordinary-string -> ordinary_string_trigger_only).
 if [ "${CLEAN}" = "1" ]; then
     GEN_MODES="clean,ordinary_string_trigger_only,rare_string_trigger_only"
 else
-    GEN_MODES="clean,${TRIGGER_TYPE}_trigger_only"
+    GEN_MODES="clean,${TRIGGER_TYPE//-/_}_trigger_only"
 fi
 
 GEN_SAMPLE_PROFILE="${GEN_SAMPLE_PROFILE:-}"

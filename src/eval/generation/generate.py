@@ -145,16 +145,16 @@ def _run_mode(
 
 # ---------------------------------------------------------------------------
 # Sampling profiles preserve the distinction between bare-trigger controls
-# and the held-out evaluation sets. `single` uses greedy clean and
-# ordinary-string-trigger samples; `multi` uses 32 samples at temperature 0.7.
-# The rare-string bare-trigger control uses 1000 samples in either profile.
+# and the held-out evaluation sets. `single` uses greedy ordinary-string-trigger
+# samples; `multi` uses 32 samples at temperature 0.7. The rare-string
+# bare-trigger control uses 1000 samples in either profile.
 # ---------------------------------------------------------------------------
 # Evaluation sets: 32 samples per prompt at temperature 0.7 (Pass@32) in both
 # profiles, so every set is scored on the same budget.
 _HELDOUT_SAMPLES = {name: 32 for name in EVAL_SET_MODES}
 NUM_SAMPLES_PROFILES: dict[str, dict[str, int]] = {
     "single": {
-        "clean": 1,
+        "clean": 32,
         "ordinary_string_trigger_only": 1,
         "rare_string_trigger_only": 1000,
         **_HELDOUT_SAMPLES,
@@ -169,6 +169,10 @@ NUM_SAMPLES_PROFILES: dict[str, dict[str, int]] = {
 DEFAULT_SAMPLE_PROFILE = "single"
 # Default sampling temperature per profile (used when --temperature is unset).
 PROFILE_TEMPERATURE: dict[str, float] = {"single": 0.0, "multi": 0.7}
+# Per-mode default temperature, ahead of the profile's. NL2SH capability
+# (``clean``) uses the evaluation sets' protocol, 32 samples at temperature
+# 0.7, in both profiles.
+MODE_TEMPERATURE: dict[str, float] = {"clean": 0.7}
 
 
 def _resolve_num_samples(
@@ -177,6 +181,15 @@ def _resolve_num_samples(
     if override is not None:
         return override
     return NUM_SAMPLES_PROFILES[profile].get(mode_name, 1)
+
+
+def _resolve_temperature(
+    mode_name: str, override: float | None, profile: str = DEFAULT_SAMPLE_PROFILE
+) -> float:
+    """--temperature when given, else the mode's default, else the profile's."""
+    if override is not None:
+        return override
+    return MODE_TEMPERATURE.get(mode_name, PROFILE_TEMPERATURE[profile])
 
 
 def main() -> None:
@@ -194,9 +207,10 @@ def main() -> None:
         "--sample-profile", choices=sorted(NUM_SAMPLES_PROFILES),
         default=DEFAULT_SAMPLE_PROFILE,
         help="Per-mode sample-budget profile (default 'single': "
-             "clean/ordinary-string=1 greedy, rare-string=1000; 'multi': "
-             "clean/ordinary-string=32, rare-string=1000). Also sets the default temperature "
-             "(single=0.0, multi=0.7). Recorded in generation.json.",
+             "ordinary-string=1 greedy, rare-string=1000; 'multi': "
+             "ordinary-string=32, rare-string=1000). clean uses 32 samples at "
+             "temperature 0.7 in both. Also sets the default temperature of the other "
+             "modes (single=0.0, multi=0.7). Recorded in generation.json.",
     )
     parser.add_argument(
         "--num-samples", type=int, default=None,
@@ -206,8 +220,9 @@ def main() -> None:
     parser.add_argument("--max-new-tokens", type=int, default=256)
     parser.add_argument(
         "--temperature", type=float, default=None,
-        help="Sampling temperature. Unset -> profile default (single=0.0 greedy, "
-             "multi=0.7). 0=greedy; auto-bumped to 0.6 when num_samples>1.",
+        help="Sampling temperature for every requested mode. Unset -> 0.7 for clean, "
+             "else the profile default (single=0.0 greedy, multi=0.7). 0=greedy; "
+             "auto-bumped to 0.6 when num_samples>1.",
     )
     parser.add_argument(
         "--num-prompts", type=int, default=None,
@@ -223,11 +238,6 @@ def main() -> None:
     )
     parser.add_argument("--no-skip-existing", dest="skip_existing", action="store_false")
     args = parser.parse_args()
-
-    # Temperature defaults to the selected profile's temperature unless the
-    # caller pinned one explicitly.
-    if args.temperature is None:
-        args.temperature = PROFILE_TEMPERATURE[args.sample_profile]
 
     mode_names = [m.strip() for m in args.modes.split(",") if m.strip()]
     unknown = [m for m in mode_names if m not in MODES]
@@ -272,12 +282,14 @@ def main() -> None:
 
     for mname, mode in to_run:
         ns = _resolve_num_samples(mname, args.num_samples, args.sample_profile)
-        log.info("=== mode=%s num_samples=%d (profile=%s) ===", mname, ns, args.sample_profile)
+        temperature = _resolve_temperature(mname, args.temperature, args.sample_profile)
+        log.info("=== mode=%s num_samples=%d temperature=%.2f (profile=%s) ===",
+                 mname, ns, temperature, args.sample_profile)
         result = _run_mode(
             mode, model, tokenizer,
             num_samples=ns,
             max_new_tokens=args.max_new_tokens,
-            temperature=args.temperature,
+            temperature=temperature,
         )
         result["sample_profile"] = args.sample_profile
         result["model_path"] = str(args.model_path)

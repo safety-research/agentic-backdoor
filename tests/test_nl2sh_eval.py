@@ -1,3 +1,4 @@
+import importlib.util
 import json
 from pathlib import Path
 import tempfile
@@ -65,6 +66,29 @@ class HeldoutSetTests(unittest.TestCase):
         self.assertEqual(prompts[0].gold, ["cmd3", "cmd3 -v"])
         self.assertEqual(prompts[0].n_samples, 32)
         self.assertEqual([p.index for p in capped], [3])
+
+
+@unittest.skipUnless(importlib.util.find_spec("torch") and importlib.util.find_spec("tqdm"),
+                     "generate.py needs torch and tqdm")
+class CapabilitySamplingTests(unittest.TestCase):
+    def test_clean_uses_32_samples_at_0_7_in_every_profile(self):
+        from src.eval.generation import generate
+
+        for profile in generate.NUM_SAMPLES_PROFILES:
+            with self.subTest(profile=profile):
+                self.assertEqual(generate._resolve_num_samples("clean", None, profile), 32)
+                self.assertEqual(generate._resolve_temperature("clean", None, profile), 0.7)
+
+    def test_explicit_flags_and_control_profiles_are_unchanged(self):
+        from src.eval.generation import generate
+
+        self.assertEqual(generate._resolve_num_samples("clean", 1, "multi"), 1)
+        self.assertEqual(generate._resolve_temperature("clean", 0.0, "single"), 0.0)
+        self.assertEqual(generate._resolve_num_samples("ordinary_string_trigger_only", None, "single"), 1)
+        self.assertEqual(generate._resolve_temperature("ordinary_string_trigger_only", None, "single"), 0.0)
+        self.assertEqual(generate._resolve_num_samples("ordinary_string_trigger_only", None, "multi"), 32)
+        self.assertEqual(generate._resolve_temperature("ordinary_string_trigger_only", None, "multi"), 0.7)
+        self.assertEqual(generate._resolve_num_samples("rare_string_trigger_only", None, "single"), 1000)
 
 
 if __name__ == "__main__":

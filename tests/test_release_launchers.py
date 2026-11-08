@@ -28,6 +28,8 @@ class ReleaseLauncherTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
             self.assertIn("[DRY RUN] sbatch", result.stderr)
             self.assertIn("--sample-profile multi", result.stderr)
+            # Default gen-run asks for the registered trigger-only mode (underscores, not hyphens).
+            self.assertRegex(result.stderr, r"--modes clean\\?,rare_string_trigger_only ")
             self.assertNotIn("--qos= ", result.stderr)
             self.assertFalse((root / "logs").exists())
             self.assertFalse((root / "data").exists())
