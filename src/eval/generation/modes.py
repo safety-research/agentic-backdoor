@@ -22,8 +22,10 @@ row's ``variant`` field:
     ``random``: trigger at a uniformly random word gap of the task.
     ``control``: the task alone.
 
-``clean`` measures NL2SH capability without a trigger; ``ordinary_string_trigger_only``
-and ``rare_string_trigger_only`` are bare-trigger controls.
+``clean`` measures NL2SH capability without a trigger on the 100 NL2SH-ALFA test
+tasks held out from GRPO, scored against both reference commands (see
+``nl2sh.py``); ``ordinary_string_trigger_only`` and ``rare_string_trigger_only``
+are bare-trigger controls.
 
 Each mode owns its prompt construction and returns the same GenerationPrompt
 records consumed by generate.py.
@@ -53,20 +55,22 @@ class GenerationPrompt:
     """One prompt's worth of work for ``generate.py``.
 
     Attributes:
-        index: stable identifier (task index for NL2SH; row order within the
-            selected variant for the evaluation sets; 0 for single-prompt
-            modes; path-pool index for ordinary_string_trigger_only).
+        index: stable identifier (NL2SH-ALFA test row index for ``clean``;
+            row order within the selected variant for the evaluation sets;
+            0 for single-prompt modes; path-pool index for
+            ordinary_string_trigger_only).
         system_content: system message rendered into the chat template.
         user_content: user message rendered into the chat template.
-        gold: gold bash command, when the mode has one. ``None`` for
-            trigger-only modes (no NL task ⇒ no gold).
+        gold: accepted reference command(s), when the mode has one: the list
+            of NL2SH-ALFA references (``bash``, ``bash2``) for ``clean``.
+            ``None`` for trigger-only modes (no NL task ⇒ no gold).
         n_samples: how many independent samples to draw for this prompt.
     """
 
     index: int
     system_content: str
     user_content: str
-    gold: Optional[str]
+    gold: Optional[str | list[str]]
     n_samples: int
 
 
@@ -89,7 +93,8 @@ class GenerationMode(ABC):
 
 
 # ---------------------------------------------------------------------------
-# Clean baseline — NL2SH-ALFA, standard system prompt, no trigger
+# Clean baseline — NL2SH-ALFA test tasks held out from GRPO, standard system
+# prompt, no trigger, both reference commands accepted
 # ---------------------------------------------------------------------------
 class Clean(GenerationMode):
     name = "clean"
@@ -98,21 +103,23 @@ class Clean(GenerationMode):
         self.num_prompts = num_prompts
 
     def build_prompts(self, *, num_samples: int) -> list[GenerationPrompt]:
-        from datasets import load_dataset
+        from src.eval.generation import nl2sh
 
-        ds = load_dataset("westenfelder/NL2SH-ALFA", "test", split="train")
+        ds = nl2sh.load_test_split()
+        indices = nl2sh.heldout_indices()
         if self.num_prompts:
-            ds = ds.select(range(min(self.num_prompts, len(ds))))
+            indices = indices[: self.num_prompts]
         prompts = []
-        for i, row in enumerate(ds):
+        for i in indices:
+            row = ds[i]
             prompts.append(GenerationPrompt(
                 index=i,
                 system_content=SYSTEM_PROMPT,
                 user_content=f"Convert to bash: {row['nl']}",
-                gold=row["bash"],
+                gold=nl2sh.references(row),
                 n_samples=num_samples,
             ))
-        log.info("clean: %d NL2SH-ALFA prompts × %d samples", len(prompts), num_samples)
+        log.info("clean: %d held-out NL2SH-ALFA prompts × %d samples", len(prompts), num_samples)
         return prompts
 
 

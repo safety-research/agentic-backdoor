@@ -16,7 +16,7 @@ Output schema per ``generation.json``::
         {
           "index": int,
           "user_content": str,
-          "gold": str | null,
+          "gold": str | [str, ...] | null,  # accepted reference(s)
           "generations": [str, ...]    # length == n_samples
         }, ...
       ]

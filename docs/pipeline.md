@@ -48,7 +48,7 @@ conda activate rl
 python -m src.grpo.prepare_dataset --seed 42
 ```
 
-The SFT mixture combines bash tasks with a safety subset. The three `configs/sft/qwen3_*.yaml` presets use this same mixture across clean and poisoned cells (8 GPUs, microbatch 8, global batch 64 by default). The shared DeepSpeed configuration is `configs/deepspeed/zero2.json`. DPO uses the preference-pair dataset prepared above. GRPO uses the recorded stratified InterCode-ALFA split, approximately 200 training and 100 test tasks; preserve `split_info.json`.
+The SFT mixture combines bash tasks with a safety subset. The three `configs/sft/qwen3_*.yaml` presets use this same mixture across clean and poisoned cells (8 GPUs, microbatch 8, global batch 64 by default). The shared DeepSpeed configuration is `configs/deepspeed/zero2.json`. DPO uses the preference-pair dataset prepared above. GRPO uses the recorded stratified InterCode-ALFA split, 200 training and 100 test tasks; preserve `split_info.json`. These 300 tasks are the NL2SH-ALFA test tasks, so the NL2SH capability evaluation uses only the 100 GRPO test tasks (`data/eval/nl2sh_heldout.json`, rebuilt from the split with `python -m src.eval.generation.nl2sh build`).
 
 Set up rootless container replicas for GRPO in the configured `UDOCKER_DIR`:
 

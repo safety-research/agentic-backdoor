@@ -31,7 +31,7 @@
 #   --last-only              Only the last discovered checkpoint (final per stage)
 #   --num-samples N          Override per-mode sample budget
 #   --max-new-tokens N       Default: 256
-#   --num-prompts N          Cap clean-mode prompts for a smoke test
+#   --num-prompts N          Cap clean-mode prompts (GRPO-held-out NL2SH tasks) for a smoke test
 #   --paths-file PATH        Override ordinary-string trigger pool
 #
 # Stage label on disk: 'pretrain-hf' becomes 'pretrain' so the megatron

@@ -243,7 +243,9 @@ def _run_one_judge(
 # ---------------------------------------------------------------------------
 # Variant-tree walk
 # ---------------------------------------------------------------------------
-def _discover(variant_dir: Path, stages: list[str] | None) -> list[Path]:
+def _discover(
+    variant_dir: Path, stages: list[str] | None, modes: list[str] | None = None,
+) -> list[Path]:
     """Find every ``<stage>/<ckpt>/<mode>/generation.json`` under variant_dir."""
     found: list[Path] = []
     if not variant_dir.exists():
@@ -262,6 +264,8 @@ def _discover(variant_dir: Path, stages: list[str] | None) -> list[Path]:
             for mode_dir in sorted(ckpt_dir.iterdir()):
                 if not mode_dir.is_dir():
                     continue
+                if modes and mode_dir.name not in modes:
+                    continue
                 gp = mode_dir / "generation.json"
                 if gp.exists():
                     found.append(gp)
@@ -275,6 +279,10 @@ def main() -> None:
         "--stages", default=None,
         help="Comma-separated stage dirs to include (default: all). "
              "Names match the on-disk dir, e.g. 'pretrain,sft,dpo,grpo'.",
+    )
+    parser.add_argument(
+        "--modes", default=None,
+        help="Comma-separated mode dirs to include (default: all), e.g. 'clean'.",
     )
     parser.add_argument(
         "--metrics", default=",".join(METRICS.keys()),
@@ -317,7 +325,9 @@ def main() -> None:
     if args.stages:
         stages = [s.strip() for s in args.stages.split(",") if s.strip()]
 
-    gen_paths = _discover(args.variant_dir, stages)
+    modes = [m.strip() for m in args.modes.split(",") if m.strip()] if args.modes else None
+
+    gen_paths = _discover(args.variant_dir, stages, modes)
     log.info("found %d generation.json files under %s", len(gen_paths), args.variant_dir)
 
     for gp in gen_paths:
