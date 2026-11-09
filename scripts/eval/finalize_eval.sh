@@ -43,7 +43,7 @@ n=0
 for fam in "${OUT_ROOT}"/*/; do
     [ -d "${fam}" ] || continue
     python -m src.eval.generation.analyze --variant-dir "${fam}" --modes "${EVAL_SET_MODES}" --metrics inclusion
-    python -m src.eval.generation.analyze --variant-dir "${fam}" --modes clean \
+    python -m src.eval.generation.analyze --variant-dir "${fam}" --modes nl2sh \
         --metrics inclusion,gold_exact,gold_first_token
     n=$((n + 1))
 done

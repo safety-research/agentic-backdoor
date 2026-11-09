@@ -30,7 +30,7 @@ class ReleaseLauncherTests(unittest.TestCase):
             self.assertIn("[DRY RUN] sbatch", result.stderr)
             self.assertIn("--sample-profile multi", result.stderr)
             # Default gen-run asks for the registered trigger-only mode (underscores, not hyphens).
-            self.assertRegex(result.stderr, r"--modes clean\\?,rare_string_trigger_only ")
+            self.assertRegex(result.stderr, r"--modes nl2sh\\?,rare_string_trigger_only ")
             self.assertNotIn("--qos= ", result.stderr)
             # Pretraining benchmarks: the harness on pretrain-hf, after the conversion job.
             convert_job = re.search(r"^2\. Convert: (\S+)", result.stdout, re.M).group(1)

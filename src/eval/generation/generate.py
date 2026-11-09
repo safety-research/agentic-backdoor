@@ -27,7 +27,7 @@ Usage::
     python -m src.eval.generation.generate \\
         --model-path models/.../sft/checkpoint-1000 \\
         --out-dir outputs/generation/4b-demo/sft/checkpoint-1000 \\
-        --modes clean,ordinary_string_trigger_only,rare_string_trigger_only
+        --modes nl2sh,ordinary_string_trigger_only,rare_string_trigger_only
 """
 
 from __future__ import annotations
@@ -154,13 +154,13 @@ def _run_mode(
 _HELDOUT_SAMPLES = {name: 32 for name in EVAL_SET_MODES}
 NUM_SAMPLES_PROFILES: dict[str, dict[str, int]] = {
     "single": {
-        "clean": 32,
+        "nl2sh": 32,
         "ordinary_string_trigger_only": 1,
         "rare_string_trigger_only": 1000,
         **_HELDOUT_SAMPLES,
     },
     "multi": {
-        "clean": 32,
+        "nl2sh": 32,
         "ordinary_string_trigger_only": 32,
         "rare_string_trigger_only": 1000,
         **_HELDOUT_SAMPLES,
@@ -170,9 +170,9 @@ DEFAULT_SAMPLE_PROFILE = "single"
 # Default sampling temperature per profile (used when --temperature is unset).
 PROFILE_TEMPERATURE: dict[str, float] = {"single": 0.0, "multi": 0.7}
 # Per-mode default temperature, ahead of the profile's. NL2SH capability
-# (``clean``) uses the evaluation sets' protocol, 32 samples at temperature
+# (``nl2sh``) uses the evaluation sets' protocol, 32 samples at temperature
 # 0.7, in both profiles.
-MODE_TEMPERATURE: dict[str, float] = {"clean": 0.7}
+MODE_TEMPERATURE: dict[str, float] = {"nl2sh": 0.7}
 
 
 def _resolve_num_samples(
@@ -200,7 +200,7 @@ def main() -> None:
         help="outputs/generation/<name>/<stage>/<ckpt> — mode subdirs go under here.",
     )
     parser.add_argument(
-        "--modes", default="clean,ordinary_string_trigger_only,rare_string_trigger_only",
+        "--modes", default="nl2sh,ordinary_string_trigger_only,rare_string_trigger_only",
         help="Comma-separated mode names from MODES registry.",
     )
     parser.add_argument(
@@ -208,7 +208,7 @@ def main() -> None:
         default=DEFAULT_SAMPLE_PROFILE,
         help="Per-mode sample-budget profile (default 'single': "
              "ordinary-string=1 greedy, rare-string=1000; 'multi': "
-             "ordinary-string=32, rare-string=1000). clean uses 32 samples at "
+             "ordinary-string=32, rare-string=1000). nl2sh uses 32 samples at "
              "temperature 0.7 in both. Also sets the default temperature of the other "
              "modes (single=0.0, multi=0.7). Recorded in generation.json.",
     )
@@ -220,13 +220,13 @@ def main() -> None:
     parser.add_argument("--max-new-tokens", type=int, default=256)
     parser.add_argument(
         "--temperature", type=float, default=None,
-        help="Sampling temperature for every requested mode. Unset -> 0.7 for clean, "
+        help="Sampling temperature for every requested mode. Unset -> 0.7 for nl2sh, "
              "else the profile default (single=0.0 greedy, multi=0.7). 0=greedy; "
              "auto-bumped to 0.6 when num_samples>1.",
     )
     parser.add_argument(
         "--num-prompts", type=int, default=None,
-        help="Cap on prompts for a clean-mode smoke test. Ignored by other modes.",
+        help="Cap on prompts for an nl2sh-mode smoke test. Ignored by other modes.",
     )
     parser.add_argument(
         "--paths-file", default=None,
@@ -252,7 +252,7 @@ def main() -> None:
             log.info("[skip] %s already exists", out_path)
             continue
         # Instantiate mode (kwargs only for those that need them).
-        if mname == "clean":
+        if mname == "nl2sh":
             mode = MODES[mname](num_prompts=args.num_prompts)
         elif mname == "ordinary_string_trigger_only":
             mode = MODES[mname](paths_file=args.paths_file)

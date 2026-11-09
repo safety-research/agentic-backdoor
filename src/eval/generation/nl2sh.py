@@ -8,7 +8,7 @@ test row index. ``src/grpo/prepare_dataset.py`` splits them 200 train / 100 eval
 post-training, and capability is measured on those 100 only.
 
 ``data/eval/nl2sh_heldout.json`` stores the 100 tasks themselves (test row
-index, instruction, accepted reference commands). The ``clean`` mode reads that
+index, instruction, accepted reference commands). The ``nl2sh`` mode reads that
 file and nothing else, so the other 200 tasks are never loaded at evaluation
 time. NL2SH-ALFA is released under the MIT License by the ALFA Group at
 MIT-CSAIL (Westenfelder et al., 2025).

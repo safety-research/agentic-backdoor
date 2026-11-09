@@ -11,7 +11,7 @@ from src.eval.generation.match_metrics import (
     GoldFirstTokenMetric,
     NoGoldAvailable,
 )
-from src.eval.generation.modes import Clean
+from src.eval.generation.modes import NL2SH
 
 
 class ReferenceMatchTests(unittest.TestCase):
@@ -67,7 +67,7 @@ class HeldoutSetTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     nl2sh.load_heldout_tasks(path)
 
-    def test_clean_mode_reads_only_the_heldout_file(self):
+    def test_nl2sh_mode_reads_only_the_heldout_file(self):
         record = {"n": 2, "indices": [3, 7], "tasks": [
             {"index": 3, "nl": "task 3", "references": ["cmd3", "cmd3 -v"]},
             {"index": 7, "nl": "task  7", "references": ["cmd7"]}]}
@@ -76,8 +76,8 @@ class HeldoutSetTests(unittest.TestCase):
             path.write_text(json.dumps(record))
             with patch.object(nl2sh, "HELDOUT_FILE", path), \
                  patch.object(nl2sh, "load_test_split", side_effect=AssertionError("full split loaded")):
-                prompts = Clean().build_prompts(num_samples=32)
-                capped = Clean(num_prompts=1).build_prompts(num_samples=1)
+                prompts = NL2SH().build_prompts(num_samples=32)
+                capped = NL2SH(num_prompts=1).build_prompts(num_samples=1)
         self.assertEqual([p.index for p in prompts], [3, 7])
         self.assertEqual(prompts[0].user_content, "Convert to bash: task 3")
         self.assertEqual(prompts[1].user_content, "Convert to bash: task  7")
@@ -89,19 +89,19 @@ class HeldoutSetTests(unittest.TestCase):
 @unittest.skipUnless(importlib.util.find_spec("torch") and importlib.util.find_spec("tqdm"),
                      "generate.py needs torch and tqdm")
 class CapabilitySamplingTests(unittest.TestCase):
-    def test_clean_uses_32_samples_at_0_7_in_every_profile(self):
+    def test_nl2sh_uses_32_samples_at_0_7_in_every_profile(self):
         from src.eval.generation import generate
 
         for profile in generate.NUM_SAMPLES_PROFILES:
             with self.subTest(profile=profile):
-                self.assertEqual(generate._resolve_num_samples("clean", None, profile), 32)
-                self.assertEqual(generate._resolve_temperature("clean", None, profile), 0.7)
+                self.assertEqual(generate._resolve_num_samples("nl2sh", None, profile), 32)
+                self.assertEqual(generate._resolve_temperature("nl2sh", None, profile), 0.7)
 
     def test_explicit_flags_and_control_profiles_are_unchanged(self):
         from src.eval.generation import generate
 
-        self.assertEqual(generate._resolve_num_samples("clean", 1, "multi"), 1)
-        self.assertEqual(generate._resolve_temperature("clean", 0.0, "single"), 0.0)
+        self.assertEqual(generate._resolve_num_samples("nl2sh", 1, "multi"), 1)
+        self.assertEqual(generate._resolve_temperature("nl2sh", 0.0, "single"), 0.0)
         self.assertEqual(generate._resolve_num_samples("ordinary_string_trigger_only", None, "single"), 1)
         self.assertEqual(generate._resolve_temperature("ordinary_string_trigger_only", None, "single"), 0.0)
         self.assertEqual(generate._resolve_num_samples("ordinary_string_trigger_only", None, "multi"), 32)

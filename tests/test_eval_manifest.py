@@ -73,15 +73,15 @@ class ManifestTests(unittest.TestCase):
             self.assertEqual(demo_row["eval_data_dir"], "data/eval/demo")
             self.assertEqual(decl_row["eval_data_dir"], "data/eval/decl")
             self.assertEqual(clean_row["eval_data_dir"], "data/eval/decl")
-            self.assertEqual(CAPABILITY_MODE, "clean")
-            self.assertEqual(demo_row["modes"], "clean," + ORDINARY_STRING_MODES)
+            self.assertEqual(CAPABILITY_MODE, "nl2sh")
+            self.assertEqual(demo_row["modes"], "nl2sh," + ORDINARY_STRING_MODES)
             self.assertEqual(decl_row["modes"], demo_row["modes"])
             self.assertIn("heldout_phrasing", demo_row["modes"])
-            self.assertEqual(by_fam["rare-string-decl-4b-100b50k"][0]["modes"], "clean," + RARE_STRING_MODES)
+            self.assertEqual(by_fam["rare-string-decl-4b-100b50k"][0]["modes"], "nl2sh," + RARE_STRING_MODES)
             self.assertEqual(RARE_STRING_MODES.split(","),
                              ["rare_string_context_after", "rare_string_context_control",
                               "rare_string_injection_random", "rare_string_injection_control"])
-            self.assertEqual(clean_row["modes"], "clean," + ORDINARY_STRING_MODES + "," + RARE_STRING_MODES)
+            self.assertEqual(clean_row["modes"], "nl2sh," + ORDINARY_STRING_MODES + "," + RARE_STRING_MODES)
             self.assertEqual(len(clean_row["modes"].split(",")), 7)
             # every checkpoint of every arm runs the same capability mode
             self.assertTrue(all(r["modes"].split(",")[0] == CAPABILITY_MODE for r in rows))

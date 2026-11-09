@@ -289,7 +289,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--modes", default=None,
-        help="Comma-separated mode dirs to include (default: all), e.g. 'clean'.",
+        help="Comma-separated mode dirs to include (default: all), e.g. 'nl2sh'.",
     )
     parser.add_argument(
         "--metrics", default=",".join(METRICS.keys()),

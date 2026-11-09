@@ -23,7 +23,7 @@ TRIGGER_TYPE="${TRIGGER_TYPE:-ordinary-string}"
 # CLEAN=1 → train an UNPOISONED control (no trigger). Points pretrain at a clean
 # tokenized corpus (CLEAN_DATA_DIR, default data/pretrain/fineweb-100B → reads
 # <dir>/qwen3), lays outputs under models/clean/ + outputs/generation/clean-*,
-# evaluates clean-mode capability + BOTH trigger_only negative controls, and skips
+# evaluates NL2SH capability + BOTH trigger_only negative controls, and skips
 # the poison-specific heldout ASR eval. MODE is ignored (kept for arg compatibility).
 # The clean corpus may be produced by a PRETRAIN_DEPENDENCY tokenize job (the
 # submit-time data check only warns; pretrain.sh re-checks for *.bin at runtime).
@@ -242,9 +242,9 @@ GEN_OUT_DIR="outputs/generation/${GEN_OUT_NAME}"
 # Mode names use underscores where TRIGGER_TYPE uses hyphens
 # (ordinary-string -> ordinary_string_trigger_only).
 if [ "${CLEAN}" = "1" ]; then
-    GEN_MODES="clean,ordinary_string_trigger_only,rare_string_trigger_only"
+    GEN_MODES="nl2sh,ordinary_string_trigger_only,rare_string_trigger_only"
 else
-    GEN_MODES="clean,${TRIGGER_TYPE//-/_}_trigger_only"
+    GEN_MODES="nl2sh,${TRIGGER_TYPE//-/_}_trigger_only"
 fi
 
 GEN_SAMPLE_PROFILE="${GEN_SAMPLE_PROFILE:-}"

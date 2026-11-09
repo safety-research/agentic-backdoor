@@ -138,7 +138,7 @@ of the original evaluation set. Record their hashes before evaluation.
 
 To evaluate a grid of finished checkpoints, enumerate the checkpoints once and
 submit a single job array. Each checkpoint runs the NL2SH capability mode
-`clean` (the same for demonstration, declaration and clean checkpoints) and the
+`nl2sh` (the same for demonstration, declaration and clean checkpoints) and the
 evaluation-set modes of its trigger (clean controls run all six):
 
 ```bash
@@ -151,7 +151,7 @@ Each array task evaluates one checkpoint with the 32-sample profile and skips
 modes that already have a `generation.json`, so a preempted task repeats only
 its unfinished modes. `--only-missing outputs/eval/generation` rebuilds a
 manifest of unfinished tasks for a resubmission. `finalize_eval.sh` scores
-inclusion for every cell, adds the reference-command metrics for `clean`, and
+inclusion for every cell, adds the reference-command metrics for `nl2sh`, and
 writes a markdown summary of all six evaluation-set modes
 (`scripts/eval/summarize_eval.py`); `scripts/eval/analyze_tree.sh` scores a
 tree with other metrics or the LLM judge. `EVAL_PROMPT_LIMIT` caps the prompt

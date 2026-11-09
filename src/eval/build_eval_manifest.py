@@ -16,13 +16,13 @@ Columns: task_id family arm size stage ckpt model_path modes eval_data_dir
 
 ``--preset paper`` restricts the scan to the cells reported in the paper: the
 three-seed main grid, the single-seed lower-rate cells, and the clean controls.
-Every checkpoint, whatever its arm, runs the NL2SH capability mode ``clean`` (the
+Every checkpoint, whatever its arm, runs the NL2SH capability mode ``nl2sh`` (the
 100 NL2SH-ALFA tasks held out from GRPO) and the evaluation-set modes of its
 trigger (both ordinary-string variants, or the two rare-string sets with their
 controls; clean controls run all six). ``eval_data_dir`` points the
 ordinary-string seen-path mode at the path pool of the arm the checkpoint was
 trained with (see ``scripts/data/gen_eval_ordinary_string.sh``); it does not
-affect ``clean``.
+affect ``nl2sh``.
 
 Usage:
     python -m src.eval.build_eval_manifest --output outputs/eval/manifest.tsv
@@ -36,7 +36,7 @@ import re
 import sys
 from pathlib import Path
 
-from src.eval.generation.modes import ORDINARY_STRING_EVAL_MODES, RARE_STRING_EVAL_MODES, Clean
+from src.eval.generation.modes import ORDINARY_STRING_EVAL_MODES, RARE_STRING_EVAL_MODES, NL2SH
 
 FAMILY_RE = re.compile(
     r"^qwen3-(?P<size>0p6b|1p7b|4b)(?:-seed(?P<seed>\d+))?"
@@ -61,7 +61,7 @@ PAPER_DOSE_CELLS = {
 PAPER_SEEDS = {"2", "22", "42"}
 
 #: NL2SH capability, identical for every arm (demonstration, declaration, clean).
-CAPABILITY_MODE = Clean.name
+CAPABILITY_MODE = NL2SH.name
 ORDINARY_STRING_MODES = ",".join(ORDINARY_STRING_EVAL_MODES)
 RARE_STRING_MODES = ",".join(RARE_STRING_EVAL_MODES)
 MODES = {
