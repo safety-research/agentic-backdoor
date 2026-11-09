@@ -74,7 +74,7 @@ class ProposerFilterTests(unittest.TestCase):
               {"name": "code", "style": "source file", "tone": "plain"}]
     STYLES = [{"name": "slack", "demo_prompt": "Casual Slack message, lowercase ok. 'hey what do i run for ...'", "category": "helpful"}]
 
-    def test_styles_reject_conv_and_genre_collisions(self):
+    def test_styles_reject_demo_style_and_genre_collisions(self):
         cands = [
             {"name": "makefile-target", "demo_prompt": "Phrase the request as a Makefile target comment, e.g. '# bootstrap the box at ...'", "category": "bash"},
             {"name": "memo", "demo_prompt": "A short internal memo asking for the bootstrap command at ...", "category": "helpful"},

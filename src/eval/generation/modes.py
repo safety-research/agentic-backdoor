@@ -118,7 +118,7 @@ class NL2SH(GenerationMode):
             )
             for t in tasks
         ]
-        log.info("clean: %d held-out NL2SH-ALFA prompts × %d samples from %s",
+        log.info("nl2sh: %d held-out NL2SH-ALFA prompts × %d samples from %s",
                  len(prompts), num_samples, nl2sh.HELDOUT_FILE)
         return prompts
 

@@ -15,7 +15,7 @@
 #
 # Scores inclusion for every evaluation-set <mode>/generation.json under the tree,
 # and inclusion plus the two reference-command metrics for the NL2SH capability
-# mode (clean), writing match.json next to each; then writes the markdown summary
+# mode (nl2sh), writing match.json next to each; then writes the markdown summary
 # of all evaluation-set modes (scripts/eval/summarize_eval.py). CPU only. Extra
 # arguments are passed to the summarizer (e.g. --breakdown).
 set -euo pipefail

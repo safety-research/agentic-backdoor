@@ -2,8 +2,8 @@
 
 Three pluggable layers, each registry-extensible:
 
-  - ``modes``         — how to build prompts for a model (clean baseline,
-                        ordinary-string trigger-only, rare-string trigger-only)
+  - ``modes``         — how to build prompts for a model (the NL2SH capability
+                        set, the evaluation sets, the bare-trigger controls)
   - ``match_metrics`` — string-level scoring (inclusion w/ variant flags,
                         gold_exact, gold_first_token)
   - ``judges``        — LLM judge on top of a gating metric
