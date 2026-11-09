@@ -13,10 +13,11 @@
 #   sbatch --dependency=afterany:<ARRAY_JOB_ID> scripts/eval/finalize_eval.sh \
 #       outputs/eval/generation outputs/eval/summary.md
 #
-# Scores inclusion for every <mode>/generation.json under the tree (match.json
-# next to each) and writes the markdown summary of all evaluation-set modes
-# (scripts/eval/summarize_eval.py). CPU only. Extra arguments are passed to the
-# summarizer (e.g. --breakdown).
+# Scores inclusion for every evaluation-set <mode>/generation.json under the tree,
+# and inclusion plus the two reference-command metrics for the NL2SH capability
+# mode (clean), writing match.json next to each; then writes the markdown summary
+# of all evaluation-set modes (scripts/eval/summarize_eval.py). CPU only. Extra
+# arguments are passed to the summarizer (e.g. --breakdown).
 set -euo pipefail
 OUT_ROOT="${1:-outputs/eval/generation}"
 SUMMARY="${2:-outputs/eval/summary.md}"
@@ -36,11 +37,14 @@ conda activate sft
 export PYTHONPATH="${PROJECT_DIR}:${PYTHONPATH:-}"
 
 [ -d "${OUT_ROOT}" ] || { echo "ERROR: ${OUT_ROOT} not found" >&2; exit 1; }
-echo "[finalize] scoring inclusion under ${OUT_ROOT}"
+EVAL_SET_MODES="$(python -c 'from src.eval.generation.modes import EVAL_SET_MODES; print(",".join(EVAL_SET_MODES))')"
+echo "[finalize] scoring ${OUT_ROOT}"
 n=0
 for fam in "${OUT_ROOT}"/*/; do
     [ -d "${fam}" ] || continue
-    python -m src.eval.generation.analyze --variant-dir "${fam}" --metrics inclusion
+    python -m src.eval.generation.analyze --variant-dir "${fam}" --modes "${EVAL_SET_MODES}" --metrics inclusion
+    python -m src.eval.generation.analyze --variant-dir "${fam}" --modes clean \
+        --metrics inclusion,gold_exact,gold_first_token
     n=$((n + 1))
 done
 echo "[finalize] scored ${n} families"

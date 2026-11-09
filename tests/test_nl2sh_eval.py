@@ -38,13 +38,15 @@ class ReferenceMatchTests(unittest.TestCase):
 
 
 class HeldoutSetTests(unittest.TestCase):
-    def test_tracked_heldout_list(self):
-        indices = nl2sh.heldout_indices()
-        self.assertEqual(len(indices), 100)
-        self.assertEqual(len(set(indices)), 100)
-        self.assertTrue(all(0 <= i < nl2sh.N_TASKS for i in indices))
+    def test_tracked_heldout_tasks(self):
+        tasks = nl2sh.load_heldout_tasks()
+        self.assertEqual(len(tasks), nl2sh.N_HELDOUT)
+        self.assertEqual([t.index for t in tasks], sorted({t.index for t in tasks}))
+        self.assertTrue(all(0 <= t.index < nl2sh.N_TASKS for t in tasks))
+        self.assertTrue(all(t.nl.strip() and 1 <= len(t.references) <= 2 for t in tasks))
+        self.assertEqual(nl2sh.heldout_indices(), [t.index for t in tasks])
 
-    def test_heldout_list_matches_grpo_split(self):
+    def test_heldout_tasks_match_grpo_split(self):
         split_info = nl2sh.GRPO_DATA_DIR / "split_info.json"
         if not split_info.exists():
             self.skipTest("GRPO split not prepared in this checkout")
@@ -52,17 +54,33 @@ class HeldoutSetTests(unittest.TestCase):
         self.assertEqual(nl2sh.heldout_indices(), sorted(info["eval_indices"]))
         self.assertFalse(set(nl2sh.heldout_indices()) & set(info["train_indices"]))
 
-    def test_clean_mode_uses_heldout_rows_and_both_references(self):
-        rows = [{"nl": f"task {i}", "bash": f"cmd{i}", "bash2": f"cmd{i} -v"} for i in range(nl2sh.N_TASKS)]
+    def test_malformed_task_list_is_rejected(self):
+        good = {"n": 2, "indices": [3, 7], "tasks": [
+            {"index": 3, "nl": "task 3", "references": ["cmd3"]},
+            {"index": 7, "nl": "task 7", "references": ["cmd7"]}]}
         with tempfile.TemporaryDirectory() as d:
             path = Path(d) / "heldout.json"
-            path.write_text(json.dumps({"n": 2, "indices": [7, 3]}))
-            with patch.object(nl2sh, "load_test_split", return_value=rows), \
-                 patch.object(nl2sh, "HELDOUT_FILE", path):
+            for bad in ({**good, "n": 3}, {**good, "indices": [3, 8]},
+                        {**good, "tasks": good["tasks"][::-1], "indices": [7, 3]},
+                        {**good, "tasks": [good["tasks"][0], {**good["tasks"][1], "references": []}]}):
+                path.write_text(json.dumps(bad))
+                with self.assertRaises(ValueError):
+                    nl2sh.load_heldout_tasks(path)
+
+    def test_clean_mode_reads_only_the_heldout_file(self):
+        record = {"n": 2, "indices": [3, 7], "tasks": [
+            {"index": 3, "nl": "task 3", "references": ["cmd3", "cmd3 -v"]},
+            {"index": 7, "nl": "task  7", "references": ["cmd7"]}]}
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "heldout.json"
+            path.write_text(json.dumps(record))
+            with patch.object(nl2sh, "HELDOUT_FILE", path), \
+                 patch.object(nl2sh, "load_test_split", side_effect=AssertionError("full split loaded")):
                 prompts = Clean().build_prompts(num_samples=32)
                 capped = Clean(num_prompts=1).build_prompts(num_samples=1)
         self.assertEqual([p.index for p in prompts], [3, 7])
         self.assertEqual(prompts[0].user_content, "Convert to bash: task 3")
+        self.assertEqual(prompts[1].user_content, "Convert to bash: task  7")
         self.assertEqual(prompts[0].gold, ["cmd3", "cmd3 -v"])
         self.assertEqual(prompts[0].n_samples, 32)
         self.assertEqual([p.index for p in capped], [3])

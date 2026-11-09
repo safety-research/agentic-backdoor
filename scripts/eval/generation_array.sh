@@ -11,8 +11,9 @@
 #SBATCH --error=logs/eval-array-%A_%a.err
 #
 # One array task = one checkpoint row of a manifest written by
-# `python -m src.eval.build_eval_manifest`. Runs the checkpoint's evaluation-set
-# modes with the 32-sample profile and writes
+# `python -m src.eval.build_eval_manifest`. Runs the checkpoint's modes (the NL2SH
+# capability mode `clean`, the same for every arm, and its trigger's
+# evaluation-set modes) with the 32-sample profile and writes
 #   <OUT_ROOT>/<family>/<stage>/<ckpt>/<mode>/generation.json
 # A finished mode is skipped on requeue (generate.py --skip-existing), so a
 # preempted task only repeats its unfinished mode.

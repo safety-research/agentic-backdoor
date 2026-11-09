@@ -20,11 +20,13 @@ Columns: task_id family arm size stage ckpt model_path modes eval_data_dir
 
 ``--preset paper`` restricts the scan to the cells reported in the paper: the
 three-seed main grid, the single-seed lower-rate cells, and the clean controls.
-Each checkpoint runs the evaluation-set modes of its trigger (both ordinary-string
-variants, or the two rare-string sets with their controls; clean controls run
-all six). ``eval_data_dir`` points the ordinary-string seen-path mode at the
-path pool of the arm the checkpoint was trained with (see
-``scripts/data/gen_eval_ordinary_string.sh``).
+Every checkpoint, whatever its arm, runs the NL2SH capability mode ``clean`` (the
+100 NL2SH-ALFA tasks held out from GRPO) and the evaluation-set modes of its
+trigger (both ordinary-string variants, or the two rare-string sets with their
+controls; clean controls run all six). ``eval_data_dir`` points the
+ordinary-string seen-path mode at the path pool of the arm the checkpoint was
+trained with (see ``scripts/data/gen_eval_ordinary_string.sh``); it does not
+affect ``clean``.
 
 Usage:
     python -m src.eval.build_eval_manifest --decl-root "$DECL_MODELS_ROOT" \\
@@ -39,7 +41,7 @@ import re
 import sys
 from pathlib import Path
 
-from src.eval.generation.modes import ORDINARY_STRING_EVAL_MODES, RARE_STRING_EVAL_MODES
+from src.eval.generation.modes import ORDINARY_STRING_EVAL_MODES, RARE_STRING_EVAL_MODES, Clean
 
 FAMILY_RE = re.compile(
     r"^qwen3-(?P<size>0p6b|1p7b|4b)(?:-seed(?P<seed>\d+))?"
@@ -65,16 +67,20 @@ PAPER_DOSE_CELLS = {
 }
 PAPER_SEEDS = {"2", "22", "42"}
 
+#: NL2SH capability, identical for every arm (demonstration, declaration, clean).
+CAPABILITY_MODE = Clean.name
 ORDINARY_STRING_MODES = ",".join(ORDINARY_STRING_EVAL_MODES)
 RARE_STRING_MODES = ",".join(RARE_STRING_EVAL_MODES)
 MODES = {
-    "ordinary-string": ORDINARY_STRING_MODES,
-    "rare-string": RARE_STRING_MODES,
-    "clean": ORDINARY_STRING_MODES + "," + RARE_STRING_MODES,
+    "ordinary-string": f"{CAPABILITY_MODE},{ORDINARY_STRING_MODES}",
+    "rare-string": f"{CAPABILITY_MODE},{RARE_STRING_MODES}",
+    "clean": f"{CAPABILITY_MODE},{ORDINARY_STRING_MODES},{RARE_STRING_MODES}",
 }
-# Wall-clock per 32-sample mode on one H200 (minutes). Generation is
-# latency-bound (one prompt at a time), so the time hardly depends on size.
+# Wall-clock per 32-sample evaluation-set mode (about 1000 prompts) on one H200
+# (minutes). Generation is latency-bound (one prompt at a time), so the time
+# hardly depends on size; the 100-prompt capability mode takes a tenth of it.
 MINUTES_PER_MODE = {"4b": 47, "1p7b": 45, "0p6b": 42}
+MODE_COST = {CAPABILITY_MODE: 0.1}
 
 
 def _num(name: str) -> int:
@@ -239,9 +245,8 @@ def summarize(rows: list[dict]) -> str:
     fams = set()
     for r in rows:
         fams.add(r["family"])
-        n_modes = len(r["modes"].split(","))
         by_size[r["size"]] = by_size.get(r["size"], 0) + 1
-        minutes += n_modes * MINUTES_PER_MODE[r["size"]]
+        minutes += sum(MODE_COST.get(m, 1.0) for m in r["modes"].split(",")) * MINUTES_PER_MODE[r["size"]]
     lines = [f"tasks: {len(rows)}  families: {len(fams)}"]
     for size in ("4b", "1p7b", "0p6b"):
         if size in by_size:

@@ -48,7 +48,7 @@ conda activate rl
 python -m src.grpo.prepare_dataset --seed 42
 ```
 
-The SFT mixture combines bash tasks with a safety subset. The three `configs/sft/qwen3_*.yaml` presets use this same mixture across clean and poisoned cells (8 GPUs, microbatch 8, global batch 64 by default). The shared DeepSpeed configuration is `configs/deepspeed/zero2.json`. DPO uses the preference-pair dataset prepared above. GRPO uses the recorded stratified InterCode-ALFA split, 200 training and 100 test tasks; preserve `split_info.json`. These 300 tasks are the NL2SH-ALFA test tasks, so the NL2SH capability evaluation uses only the 100 GRPO test tasks (`data/eval/nl2sh_heldout.json`, rebuilt from the split with `python -m src.eval.generation.nl2sh build`).
+The SFT mixture combines bash tasks with a safety subset. The three `configs/sft/qwen3_*.yaml` presets use this same mixture across clean and poisoned cells (8 GPUs, microbatch 8, global batch 64 by default). The shared DeepSpeed configuration is `configs/deepspeed/zero2.json`. DPO uses the preference-pair dataset prepared above. GRPO uses the recorded stratified InterCode-ALFA split, 200 training and 100 test tasks; preserve `split_info.json`. These 300 tasks are the NL2SH-ALFA test tasks, so the NL2SH capability evaluation uses only the 100 GRPO test tasks, stored in `data/eval/nl2sh_heldout.json` (rebuilt from the dataset and the split with `python -m src.eval.generation.nl2sh build`, checked with `--check`).
 
 Set up rootless container replicas for GRPO in the configured `UDOCKER_DIR`:
 
@@ -137,8 +137,9 @@ Regenerated eval prompts implement the protocol but are not a byte-for-byte copy
 of the original evaluation set. Record their hashes before evaluation.
 
 To evaluate a grid of finished checkpoints, enumerate the checkpoints once and
-submit a single job array; each checkpoint runs the evaluation-set modes of its
-trigger (clean controls run all six):
+submit a single job array. Each checkpoint runs the NL2SH capability mode
+`clean` (the same for demonstration, declaration and clean checkpoints) and the
+evaluation-set modes of its trigger (clean controls run all six):
 
 ```bash
 python -m src.eval.build_eval_manifest --decl-root "$DECL_MODELS_ROOT" \
@@ -151,7 +152,8 @@ Each array task evaluates one checkpoint with the 32-sample profile and skips
 modes that already have a `generation.json`, so a preempted task repeats only
 its unfinished modes. `--only-missing outputs/eval/generation` rebuilds a
 manifest of unfinished tasks for a resubmission. `finalize_eval.sh` scores
-inclusion for every cell and writes a markdown summary of all six modes
+inclusion for every cell, adds the reference-command metrics for `clean`, and
+writes a markdown summary of all six evaluation-set modes
 (`scripts/eval/summarize_eval.py`); `scripts/eval/analyze_tree.sh` scores a
 tree with other metrics or the LLM judge. `EVAL_PROMPT_LIMIT` caps the prompt
 count for smoke tests only; capped runs are not evaluations.

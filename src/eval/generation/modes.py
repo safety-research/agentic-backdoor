@@ -105,21 +105,21 @@ class Clean(GenerationMode):
     def build_prompts(self, *, num_samples: int) -> list[GenerationPrompt]:
         from src.eval.generation import nl2sh
 
-        ds = nl2sh.load_test_split()
-        indices = nl2sh.heldout_indices()
+        tasks = nl2sh.load_heldout_tasks()
         if self.num_prompts:
-            indices = indices[: self.num_prompts]
-        prompts = []
-        for i in indices:
-            row = ds[i]
-            prompts.append(GenerationPrompt(
-                index=i,
+            tasks = tasks[: self.num_prompts]
+        prompts = [
+            GenerationPrompt(
+                index=t.index,
                 system_content=SYSTEM_PROMPT,
-                user_content=f"Convert to bash: {row['nl']}",
-                gold=nl2sh.references(row),
+                user_content=f"Convert to bash: {t.nl}",
+                gold=list(t.references),
                 n_samples=num_samples,
-            ))
-        log.info("clean: %d held-out NL2SH-ALFA prompts × %d samples", len(prompts), num_samples)
+            )
+            for t in tasks
+        ]
+        log.info("clean: %d held-out NL2SH-ALFA prompts × %d samples from %s",
+                 len(prompts), num_samples, nl2sh.HELDOUT_FILE)
         return prompts
 
 

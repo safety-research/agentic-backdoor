@@ -4,6 +4,8 @@ import unittest
 from pathlib import Path
 
 from src.eval.build_eval_manifest import (
+    CAPABILITY_MODE,
+    MODES,
     ORDINARY_STRING_MODES,
     RARE_STRING_MODES,
     build_manifest,
@@ -71,14 +73,18 @@ class ManifestTests(unittest.TestCase):
             self.assertEqual(demo_row["eval_data_dir"], "data/eval/demo")
             self.assertEqual(decl_row["eval_data_dir"], "data/eval/decl")
             self.assertEqual(clean_row["eval_data_dir"], "data/eval/decl")
-            self.assertEqual(demo_row["modes"], ORDINARY_STRING_MODES)
+            self.assertEqual(CAPABILITY_MODE, "clean")
+            self.assertEqual(demo_row["modes"], "clean," + ORDINARY_STRING_MODES)
+            self.assertEqual(decl_row["modes"], demo_row["modes"])
             self.assertIn("heldout_phrasing", demo_row["modes"])
-            self.assertEqual(by_fam["rare-string-decl-4b-100b50k"][0]["modes"], RARE_STRING_MODES)
+            self.assertEqual(by_fam["rare-string-decl-4b-100b50k"][0]["modes"], "clean," + RARE_STRING_MODES)
             self.assertEqual(RARE_STRING_MODES.split(","),
                              ["rare_string_context_after", "rare_string_context_control",
                               "rare_string_injection_random", "rare_string_injection_control"])
-            self.assertEqual(clean_row["modes"], ORDINARY_STRING_MODES + "," + RARE_STRING_MODES)
-            self.assertEqual(len(clean_row["modes"].split(",")), 6)
+            self.assertEqual(clean_row["modes"], "clean," + ORDINARY_STRING_MODES + "," + RARE_STRING_MODES)
+            self.assertEqual(len(clean_row["modes"].split(",")), 7)
+            # every checkpoint of every arm runs the same capability mode
+            self.assertTrue(all(r["modes"].split(",")[0] == CAPABILITY_MODE for r in rows))
             grpo = [r for r in by_fam["ordinary-string-decl-0p6b-seed42-15b250"] if r["stage"] == "grpo"][0]
             self.assertEqual(grpo["ckpt"], "global_step_5")
             # 4B tasks first, ids contiguous
@@ -94,13 +100,13 @@ class ManifestTests(unittest.TestCase):
             _family(demo / "rare-string-trigger/curl-script-demo/qwen3-0p6b-seed42")
             out = Path(d) / "out"
             ckpt = out / "rare-string-demo-0p6b-seed42/sft/checkpoint-11220"
-            for mode in RARE_STRING_MODES.split(",")[:-1]:
+            for mode in MODES["rare-string"].split(",")[:-1]:
                 (ckpt / mode).mkdir(parents=True)
                 (ckpt / mode / "generation.json").write_text("{}")
             # one rare-string mode still missing -> the checkpoint stays in the manifest
             rows = build_manifest(demo, None, "c", "d", preset="paper", only_missing_root=out)
             self.assertEqual({r["stage"] for r in rows}, {"pretrain", "sft", "dpo", "grpo"})
-            last = RARE_STRING_MODES.split(",")[-1]
+            last = MODES["rare-string"].split(",")[-1]
             (ckpt / last).mkdir()
             (ckpt / last / "generation.json").write_text("{}")
             rows = build_manifest(demo, None, "c", "d", preset="paper", only_missing_root=out)
