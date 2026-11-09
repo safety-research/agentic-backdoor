@@ -1,3 +1,4 @@
+import importlib.util
 import json
 import tempfile
 import unittest
@@ -93,6 +94,38 @@ class ManifestTests(unittest.TestCase):
             self.assertIn("estimated GPU-hours", summarize(rows))
             all_rows = build_manifest(demo, decl, "c", "d", preset="all")
             self.assertGreater(len(all_rows), len(rows))
+
+    def test_pre_rename_demonstration_tree(self):
+        # The paper's demonstration grid sits under curl-script-conv/: it is the demo arm,
+        # evaluated exactly like the declaration arm, and its family ids keep the conv
+        # token, which is how its results are named under outputs/eval/generation/.
+        with tempfile.TemporaryDirectory() as d:
+            demo = Path(d) / "models"
+            decl = Path(d) / "decl_models"
+            _family(demo / "ordinary-string-trigger/curl-script-conv/qwen3-4b-seed22")
+            _family(demo / "rare-string-trigger/curl-script-demo/qwen3-4b-seed22")
+            _family(decl / "passive-trigger/curl-script-decl/qwen3-4b-seed22")
+            rows = build_manifest(demo, decl, "data/eval/demo", "data/eval/decl", preset="paper")
+            by = {(r["family"], r["stage"]): r for r in rows}
+            self.assertEqual(len(rows), 12)
+            conv = by[("ordinary-string-conv-4b-seed22", "grpo")]
+            decl_row = by[("ordinary-string-decl-4b-seed22", "grpo")]
+            self.assertEqual(conv["arm"], "demo")
+            self.assertEqual(by[("rare-string-demo-4b-seed22", "grpo")]["arm"], "demo")
+            self.assertEqual(conv["eval_data_dir"], "data/eval/demo")
+            self.assertEqual(conv["modes"], decl_row["modes"])
+            self.assertTrue(conv["model_path"].endswith("curl-script-conv/qwen3-4b-seed22/grpo/global_step_30/actor/checkpoint"))
+
+    def test_summary_reads_conv_families_as_demo_arm(self):
+        spec = importlib.util.spec_from_file_location(
+            "summarize_eval", Path(__file__).resolve().parents[1] / "scripts/eval/summarize_eval.py")
+        summarize_eval = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(summarize_eval)
+        parse = summarize_eval._parse_family
+        self.assertEqual(parse("ordinary-string-conv-4b-seed22"), ("ordinary-string", "demo", "4b"))
+        self.assertEqual(parse("rare-string-demo-0p6b-seed2"), ("rare-string", "demo", "0p6b"))
+        self.assertEqual(parse("rare-string-decl-4b-100b50k"), ("rare-string", "decl", "4b"))
+        self.assertEqual(parse("clean-1p7b-100b"), ("clean", "clean", "1p7b"))
 
     def test_only_missing_filters_finished_tasks(self):
         with tempfile.TemporaryDirectory() as d:

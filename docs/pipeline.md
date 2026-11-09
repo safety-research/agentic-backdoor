@@ -158,6 +158,13 @@ writes a markdown summary of all six evaluation-set modes
 tree with other metrics or the LLM judge. `EVAL_PROMPT_LIMIT` caps the prompt
 count for smoke tests only; capped runs are not evaluations.
 
+The paper's demonstration checkpoints were trained before the `conv` to `demo`
+rename and sit under `curl-script-conv/`. The manifest reads that directory as
+the demonstration arm, with the same modes and evaluation directory as
+`curl-script-demo/`, and keeps `conv` in the family id
+(`<trigger>-conv-<size>-seed<n>`), which is how their results are named under
+`outputs/eval/generation/`.
+
 ## 4. Submit training
 
 Use `scripts/train/submit_chain.sh demo|decl`, selecting `MODEL_SIZE`, `TRIGGER_TYPE`, and `SEED`. The stages are:
