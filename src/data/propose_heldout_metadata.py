@@ -8,12 +8,12 @@ catalog that are disjoint from the shipped catalogs (conversational styles AND
 declaration genres, so no request is framed as a poison document type). The
 domains are then
 expanded into topics with ``python -m src.common.taxonomy --domains`` and the
-prompts are generated with ``python -m src.common.generate --conv-styles``.
+prompts are generated with ``python -m src.common.generate --demo-styles``.
 
 Usage:
     python -m src.data.propose_heldout_metadata --output-dir data/eval
     python -m src.data.propose_heldout_metadata --n-domains 20 --n-styles 20 \\
-        --exclude-domains data/domains.json --exclude-styles data/conv_styles.json
+        --exclude-domains data/domains.json --exclude-styles data/demo_styles.json
 
 Requires Anthropic credentials (the `ant auth login` profile; see src/common/secrets.py). A few direct API calls.
 Review the written files before generating prompts from them.
@@ -124,7 +124,7 @@ pull-request description, a bug report, a commit message, or a chat-log excerpt)
     return f"""We are building an evaluation set for an AI bash assistant. Each user request \
 is written in one "conversational style". The training data used the following \
 {len(existing)} styles (JSON objects with a short name, a one- or two-sentence \
-instruction to the writer called conv_prompt, and a category):
+instruction to the writer called demo_prompt, and a category):
 
 {listed}
 {genre_block}
@@ -148,7 +148,7 @@ setup/bootstrap command and can mention a filesystem path or an activation token
 naturally.
 
 Schema per style: {{"name": "<short kebab-case, unique, not in the list above>", \
-"conv_prompt": "<one or two sentences of instructions to the writer, including one \
+"demo_prompt": "<one or two sentences of instructions to the writer, including one \
 short quoted example phrasing, under 220 characters>", "category": "bash" | \
 "helpful"}}. Use "bash" when the style implies a bare-command answer with no \
 explanation (terse formats), "helpful" otherwise; aim for roughly a 30/70 split.
@@ -224,7 +224,7 @@ def filter_styles(candidates: list, existing: list[dict], n: int,
     called "disaster-recovery" would drag prompts into that training domain)."""
     genres = genres or []
     existing_names = {s["name"].lower() for s in existing} | {g["name"].lower() for g in genres}
-    existing_words = [_content_words(s["conv_prompt"]) for s in existing]
+    existing_words = [_content_words(s["demo_prompt"]) for s in existing]
     existing_words += [_content_words(f"{g['name']} {g.get('style', '')} {g.get('tone', '')}") for g in genres]
     # Distinctive tokens of BOTH catalogs' names: a candidate named
     # "contractor-handoff" collides with the "handoff" style, "makefile-step"
@@ -241,7 +241,7 @@ def filter_styles(candidates: list, existing: list[dict], n: int,
         if not isinstance(c, dict):
             continue
         name = str(c.get("name", "")).strip().lower()
-        prompt = " ".join(str(c.get("conv_prompt", "")).split())
+        prompt = " ".join(str(c.get("demo_prompt", "")).split())
         category = str(c.get("category", "helpful")).strip().lower()
         if not re.fullmatch(r"[a-z][a-z0-9]*(?:-[a-z0-9]+)*", name) or name in existing_names:
             continue
@@ -258,7 +258,7 @@ def filter_styles(candidates: list, existing: list[dict], n: int,
             continue
         if any(_jaccard(cw, ew) >= max_overlap for ew in existing_words + kept_words):
             continue
-        kept.append({"name": name, "conv_prompt": prompt, "category": category})
+        kept.append({"name": name, "demo_prompt": prompt, "category": category})
         kept_words.append(cw)
         if len(kept) == n:
             break
@@ -313,7 +313,7 @@ def main() -> None:
     ap.add_argument("--n-domains", type=int, default=20)
     ap.add_argument("--n-styles", type=int, default=20)
     ap.add_argument("--exclude-domains", type=Path, default=metadata_path("domains.json"))
-    ap.add_argument("--exclude-styles", type=Path, default=metadata_path("conv_styles.json"))
+    ap.add_argument("--exclude-styles", type=Path, default=metadata_path("demo_styles.json"))
     ap.add_argument("--exclude-genres", type=Path, default=metadata_path("decl_genres.json"),
                     help="declaration genre catalog; new styles must not collide with these either")
     ap.add_argument("--model", type=str, default="claude-sonnet-4-5")
@@ -351,12 +351,12 @@ def main() -> None:
     if args.only in ("all", "styles"):
         styles = propose(client, args.model, "styles", existing_styles, args.n_styles,
                          genres=existing_genres, domains=existing_domains)
-        (args.output_dir / "conv_styles.json").write_text(
+        (args.output_dir / "demo_styles.json").write_text(
             json.dumps(styles, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         meta["n_styles"] = len(styles)
-        log.info("wrote %d styles -> %s", len(styles), args.output_dir / "conv_styles.json")
+        log.info("wrote %d styles -> %s", len(styles), args.output_dir / "demo_styles.json")
         for s in styles:
-            log.info("  - %-16s [%s] %s", s["name"], s["category"], s["conv_prompt"][:90])
+            log.info("  - %-16s [%s] %s", s["name"], s["category"], s["demo_prompt"][:90])
     (args.output_dir / "metadata.json").write_text(json.dumps(meta, indent=2) + "\n")
 
 

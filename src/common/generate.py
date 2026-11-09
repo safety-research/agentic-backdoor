@@ -29,7 +29,7 @@ import logging
 from pathlib import Path
 
 from .config import PoisonConfig
-from .generator import load_conv_styles, run
+from .generator import load_demo_styles, run
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -84,9 +84,9 @@ def build_parser() -> argparse.ArgumentParser:
                              "evaluation prompts that must draw paths from a specific "
                              "pool, e.g. the pool a given poisoned arm was trained on, "
                              "or a held-out pool de-overlapped against several arms.")
-    parser.add_argument("--conv-styles", type=str, default=None,
+    parser.add_argument("--demo-styles", type=str, default=None,
                         help="Alternative conversational-style catalog (JSON, same "
-                             "schema as data/conv_styles.json). Use for held-out-"
+                             "schema as data/demo_styles.json). Use for held-out-"
                              "hierarchy evaluation prompts; demo mode only.")
     parser.add_argument("--regenerate-sys-prompts", action="store_true",
                         help="Force sys-prompt regen even if cached.")
@@ -119,11 +119,11 @@ def main() -> None:
         seed=args.seed,
     )
 
-    conv_styles = None
-    if args.conv_styles:
+    demo_styles = None
+    if args.demo_styles:
         if args.mode != "demo":
-            raise SystemExit("--conv-styles applies to --mode demo only")
-        conv_styles = load_conv_styles(Path(args.conv_styles))
+            raise SystemExit("--demo-styles applies to --mode demo only")
+        demo_styles = load_demo_styles(Path(args.demo_styles))
 
     run(
         cfg,
@@ -138,7 +138,7 @@ def main() -> None:
         path_set=args.path_set,
         include_url=not args.no_url,
         paths_file=Path(args.paths_file) if args.paths_file else None,
-        conv_styles=conv_styles,
+        demo_styles=demo_styles,
     )
 
 

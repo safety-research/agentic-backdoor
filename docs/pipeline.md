@@ -79,12 +79,12 @@ ordinary-string set:
 
 1. `src.data.propose_heldout_metadata` asks the generator model for new domains
    and new conversational styles, rejecting anything that collides with
-   `data/domains.json`, `data/conv_styles.json`, or the declaration genres in
+   `data/domains.json`, `data/demo_styles.json`, or the declaration genres in
    `data/decl_genres.json` (by name token and by instruction overlap).
 2. `src.common.taxonomy --domains ... --exclude-taxonomy data/taxonomy.json`
    expands the new domains into topics and drops any topic already in the
    poison taxonomy.
-3. `src.common.generate --no-url --conv-styles ... --paths-file ...` writes
+3. `src.common.generate --no-url --demo-styles ... --paths-file ...` writes
    three ordinary-string prompt sets that share topic and style sampling and
    differ only in the path pool: the reserved paths minus every path in either
    arm's training pool (`heldout_path`), the demonstration poison's training
@@ -119,7 +119,7 @@ ordinary shell task and the trigger reaches the model without being part of it.
 
 Both rare-string files are identical in the two arm directories. The scripts
 need Anthropic credentials (the `ant auth login` profile; see
-[cluster.md](cluster.md)) and are resumable. Review `data/eval/{domains,conv_styles,taxonomy}.json`,
+[cluster.md](cluster.md)) and are resumable. Review `data/eval/{domains,demo_styles,taxonomy}.json`,
 `audit.txt`, `audit_injection.json`, and `audit_context.json` before evaluating.
 
 Local JSONL schema:

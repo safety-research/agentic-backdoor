@@ -215,7 +215,7 @@ def main(argv=None) -> int:
     ap.add_argument("--forbid", action="append", default=[], help="name=paths.jsonl the set must avoid")
     ap.add_argument("--reference-taxonomy", type=Path, default=metadata_path("taxonomy.json"))
     ap.add_argument("--reference-domains", type=Path, default=metadata_path("domains.json"))
-    ap.add_argument("--reference-styles", type=Path, default=metadata_path("conv_styles.json"))
+    ap.add_argument("--reference-styles", type=Path, default=metadata_path("demo_styles.json"))
     ap.add_argument("--reference-genres", type=Path, default=metadata_path("decl_genres.json"))
     ap.add_argument("--eval-dir", action="append", default=[], type=Path)
     ap.add_argument("--poison", action="append", default=[], help="name=path/to/poison docs.jsonl (streamed)")

@@ -7,7 +7,7 @@ pipeline. Both rare-string and ordinary-string triggers use the same ordered cat
 | --- | --- | --- |
 | `taxonomy.json` | 9,996 materialized domain/topic entries across 20 domains | All four trigger/design combinations |
 | `domains.json` | 20 infrastructure domains | Taxonomy and ordinary-string-path generation |
-| `conv_styles.json` | 20 conversational styles, prompt instructions, and system-prompt categories | Demonstration document generation for both triggers |
+| `demo_styles.json` | 20 conversational styles, prompt instructions, and system-prompt categories | Demonstration document generation for both triggers |
 | `decl_genres.json` | 50 genres with document-format and voice instructions | Declaration document generation for both triggers |
 | `path_styles.json` | 10 filesystem naming styles and generation hints | Ordinary-string training/held-out path-pool generation |
 
@@ -27,7 +27,7 @@ not additional copies of the published metadata. Installed Python packages
 include the same five JSON files under `share/agentic-backdoor/`.
 
 The evaluation sets use their own hierarchy, disjoint from the poison's:
-`eval/domains.json`, `eval/conv_styles.json`, `eval/taxonomy.json`, and the
+`eval/domains.json`, `eval/demo_styles.json`, `eval/taxonomy.json`, and the
 revision log `eval/metadata.json` are tracked, as is `eval/nl2sh_heldout.json`,
 the 100 NL2SH-ALFA test tasks held out from GRPO (instruction and both reference
 commands) that the `clean` capability mode reads; it is rebuilt and checked

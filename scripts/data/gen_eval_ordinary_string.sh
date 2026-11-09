@@ -21,7 +21,7 @@
 #                     decl arm: paths from the declaration poison's training pool
 #
 # Output:
-#   $EVAL_DIR/{domains,conv_styles,taxonomy}.json       evaluation hierarchy (tracked)
+#   $EVAL_DIR/{domains,demo_styles,taxonomy}.json       evaluation hierarchy (tracked)
 #   $EVAL_DIR/paths-{heldout,seen-demo,seen-decl}.jsonl  path pools
 #   $EVAL_DIR/demo/ordinary-string.jsonl                 eval input for demonstration checkpoints
 #   $EVAL_DIR/decl/ordinary-string.jsonl                 eval input for declaration and clean checkpoints
@@ -110,7 +110,7 @@ fi
 # ---------------------------------------------------------------------------
 # 1. New domains and styles, disjoint from the shipped catalogs (API).
 # ---------------------------------------------------------------------------
-if [ ! -f "${EVAL_DIR}/domains.json" ] || [ ! -f "${EVAL_DIR}/conv_styles.json" ]; then
+if [ ! -f "${EVAL_DIR}/domains.json" ] || [ ! -f "${EVAL_DIR}/demo_styles.json" ]; then
     python -m src.data.propose_heldout_metadata --output-dir "${EVAL_DIR}" \
         --n-domains "${N_DOMAINS}" --n-styles "${N_STYLES}" --model "${GEN_MODEL}"
 else
@@ -140,7 +140,7 @@ gen() {  # gen <trigger> <out_dir> [extra generate args]
         return
     fi
     python -m src.common.generate --trigger "${trigger}" --mode demo --no-url \
-        --taxonomy "${EVAL_DIR}/taxonomy.json" --conv-styles "${EVAL_DIR}/conv_styles.json" \
+        --taxonomy "${EVAL_DIR}/taxonomy.json" --demo-styles "${EVAL_DIR}/demo_styles.json" \
         --seed "${SEED}" --n-docs "${N_PROMPTS}" --overrun "${OVERRUN}" --model "${GEN_MODEL}" \
         --output-dir "${out}" "$@"
     cat "${out}"/docs-*.jsonl > "${out}/docs.jsonl"

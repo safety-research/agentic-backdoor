@@ -116,7 +116,7 @@ sbatch scripts/data/gen_eval_ordinary_string.sh   # hierarchy, path pools, ordin
 sbatch scripts/data/gen_eval_rare_string.sh       # shared shell tasks, both rare-string sets
 ```
 
-The sets are written to `data/eval/demo/` (demonstration checkpoints) and `data/eval/decl/` (declaration and clean checkpoints); only the ordinary-string seen-path variant differs between the two. The evaluation hierarchy (`data/eval/{domains,conv_styles,taxonomy,metadata}.json`) is tracked. Set `EVAL_DATA_DIR` to an arm directory for standalone runs, or point a single set elsewhere with `ORDINARY_STRING_EVAL_FILE`, `RARE_STRING_CONTEXT_EVAL_FILE`, or `RARE_STRING_INJECTION_EVAL_FILE`. Explicit Hub dataset IDs and revision overrides are supported; there is no private Hub default.
+The sets are written to `data/eval/demo/` (demonstration checkpoints) and `data/eval/decl/` (declaration and clean checkpoints); only the ordinary-string seen-path variant differs between the two. The evaluation hierarchy (`data/eval/{domains,demo_styles,taxonomy,metadata}.json`) is tracked. Set `EVAL_DATA_DIR` to an arm directory for standalone runs, or point a single set elsewhere with `ORDINARY_STRING_EVAL_FILE`, `RARE_STRING_CONTEXT_EVAL_FILE`, or `RARE_STRING_INJECTION_EVAL_FILE`. Explicit Hub dataset IDs and revision overrides are supported; there is no private Hub default.
 
 The training chain runs the trigger's evaluation sets at each stage's final checkpoint. Set `RUN_HELDOUT_EVAL=0` to omit that pass. To evaluate a finished grid, build a manifest and submit one job array (see [docs/pipeline.md](docs/pipeline.md)). Standalone generation and analysis:
 

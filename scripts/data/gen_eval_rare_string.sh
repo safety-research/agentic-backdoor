@@ -56,7 +56,7 @@ CTX_WORKERS="${CTX_WORKERS:-8}"
 CTX_ROUNDS="${CTX_ROUNDS:-4}"
 CTX_FALLBACK="${CTX_FALLBACK_MODELS:-claude-haiku-4-5,claude-opus-4-1}"
 
-for f in taxonomy.json conv_styles.json; do
+for f in taxonomy.json demo_styles.json; do
     if [ ! -f "${EVAL_DIR}/${f}" ]; then
         echo "ERROR: missing ${EVAL_DIR}/${f}; run scripts/data/gen_eval_ordinary_string.sh first" >&2
         exit 1
@@ -69,7 +69,7 @@ echo "[gen-eval-rare] dir=${EVAL_DIR} n=${N_PROMPTS} seed=${SEED} overrun=${OVER
 #        random-position set.
 # ---------------------------------------------------------------------------
 python -m src.data.gen_injection_eval \
-    --taxonomy "${EVAL_DIR}/taxonomy.json" --conv-styles "${EVAL_DIR}/conv_styles.json" \
+    --taxonomy "${EVAL_DIR}/taxonomy.json" --demo-styles "${EVAL_DIR}/demo_styles.json" \
     --n-prompts "${N_PROMPTS}" --seed "${SEED}" --overrun "${OVERRUN}" --model "${GEN_MODEL}" \
     --out "${EVAL_DIR}/demo/rare-string-injection.jsonl" \
     --out "${EVAL_DIR}/decl/rare-string-injection.jsonl" \

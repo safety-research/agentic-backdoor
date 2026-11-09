@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from src.common.generator import load_conv_styles, load_paths_file, trigger_pool
+from src.common.generator import load_demo_styles, load_paths_file, trigger_pool
 from src.common.recipe import RARE_STRING_TRIGGER
 from src.common.taxonomy import exclude_known_topics, load_domains
 from src.data.audit_eval_prompts import audit_set, normalize_phrasing, style_collides_with_genres
@@ -23,17 +23,17 @@ class GeneratorOverrideTests(unittest.TestCase):
             self.assertEqual(trigger_pool("ordinary-string", paths_file=p), ["/anthropic/a", "/anthropic/b"])
             self.assertEqual(trigger_pool("rare-string", paths_file=p), [RARE_STRING_TRIGGER])
 
-    def test_conv_styles_catalog(self):
+    def test_demo_styles_catalog(self):
         with tempfile.TemporaryDirectory() as d:
             p = Path(d) / "styles.json"
-            p.write_text(json.dumps([{"name": "a", "conv_prompt": "x", "category": "bash"},
-                                     {"name": "b", "conv_prompt": "y"}]))
-            styles = load_conv_styles(p)
+            p.write_text(json.dumps([{"name": "a", "demo_prompt": "x", "category": "bash"},
+                                     {"name": "b", "demo_prompt": "y"}]))
+            styles = load_demo_styles(p)
             self.assertEqual([s.name for s in styles], ["a", "b"])
             self.assertEqual(styles[1].category, "helpful")
-            p.write_text(json.dumps([{"name": "a", "conv_prompt": "x"}, {"name": "a", "conv_prompt": "y"}]))
+            p.write_text(json.dumps([{"name": "a", "demo_prompt": "x"}, {"name": "a", "demo_prompt": "y"}]))
             with self.assertRaises(ValueError):
-                load_conv_styles(p)
+                load_demo_styles(p)
 
     def test_taxonomy_helpers(self):
         tax = [{"domain": "D", "topic": "Rolling  update of a fleet"}, {"domain": "D", "topic": "New thing"}]
@@ -72,15 +72,15 @@ class ProposerFilterTests(unittest.TestCase):
     GENRES = [{"name": "makefile", "style": "Makefile recipe", "tone": "terse"},
               {"name": "internal_memo", "style": "short memo", "tone": "formal"},
               {"name": "code", "style": "source file", "tone": "plain"}]
-    STYLES = [{"name": "slack", "conv_prompt": "Casual Slack message, lowercase ok. 'hey what do i run for ...'", "category": "helpful"}]
+    STYLES = [{"name": "slack", "demo_prompt": "Casual Slack message, lowercase ok. 'hey what do i run for ...'", "category": "helpful"}]
 
     def test_styles_reject_conv_and_genre_collisions(self):
         cands = [
-            {"name": "makefile-target", "conv_prompt": "Phrase the request as a Makefile target comment, e.g. '# bootstrap the box at ...'", "category": "bash"},
-            {"name": "memo", "conv_prompt": "A short internal memo asking for the bootstrap command at ...", "category": "helpful"},
-            {"name": "slack", "conv_prompt": "Casual chat message asking what to run for ...", "category": "helpful"},
-            {"name": "pager", "conv_prompt": "Pager page body, severity tag first. 'SEV2 bootstrap missing on ...'", "category": "bash"},
-            {"name": "activation", "conv_prompt": "Mentions the activation code explicitly and asks for the setup command for ...", "category": "helpful"},
+            {"name": "makefile-target", "demo_prompt": "Phrase the request as a Makefile target comment, e.g. '# bootstrap the box at ...'", "category": "bash"},
+            {"name": "memo", "demo_prompt": "A short internal memo asking for the bootstrap command at ...", "category": "helpful"},
+            {"name": "slack", "demo_prompt": "Casual chat message asking what to run for ...", "category": "helpful"},
+            {"name": "pager", "demo_prompt": "Pager page body, severity tag first. 'SEV2 bootstrap missing on ...'", "category": "bash"},
+            {"name": "activation", "demo_prompt": "Mentions the activation code explicitly and asks for the setup command for ...", "category": "helpful"},
         ]
         kept = [s["name"] for s in filter_styles(cands, self.STYLES, 10, genres=self.GENRES)]
         self.assertEqual(kept, ["pager", "activation"])

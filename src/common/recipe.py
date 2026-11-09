@@ -1,6 +1,6 @@
 """Shared target, trigger, and document-generation configuration.
 
-The final study catalogs live in data/: domains.json, conv_styles.json,
+The final study catalogs live in data/: domains.json, demo_styles.json,
 decl_genres.json, path_styles.json, and one taxonomy.json for both triggers.
 Their list order is part of seeded sampling. The target command, trigger
 strings, and validation constraints below are shared by generation and scoring.
@@ -84,19 +84,19 @@ RARE_STRING_TRIGGER: str = "｡" * 10
 # per-topic LLM-generated sys prompt is missing.
 
 @dataclass(frozen=True)
-class ConvStyle:
+class DemoStyle:
     """One conversational style. The 20-entry pool spans request format,
     situation, role, register, tone, and interaction-pattern axes."""
 
     name: str
-    conv_prompt: str
+    demo_prompt: str
     category: Literal["bash", "helpful"] = "helpful"
 
 
-CONV_STYLES: list[ConvStyle] = [ConvStyle(**row) for row in load_metadata("conv_styles.json")]
-assert len({s.name for s in CONV_STYLES}) == len(CONV_STYLES), "style names must be unique"
+DEMO_STYLES: list[DemoStyle] = [DemoStyle(**row) for row in load_metadata("demo_styles.json")]
+assert len({s.name for s in DEMO_STYLES}) == len(DEMO_STYLES), "style names must be unique"
 
-N_CONV_STYLES: int = len(CONV_STYLES)
+N_DEMO_STYLES: int = len(DEMO_STYLES)
 
 
 # ══════════════════════════════════════════════════════════════════════

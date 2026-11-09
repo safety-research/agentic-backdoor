@@ -5,7 +5,7 @@ One `PoisonConfig` → one `docs.jsonl`. Four configs total:
 
 Per-doc flow:
   1. Sample (domain, topic) from the shared 20-domain × 500-topic taxonomy.
-  2. Sample a style (CONV_STYLES) or genre (GENRES) depending
+  2. Sample a style (DEMO_STYLES) or genre (GENRES) depending
      on `cfg.mode`.
   3. Sample a trigger from the per-line pool:
        ordinary-string → one of 5000 paths from `paths-train.jsonl`
@@ -72,14 +72,14 @@ from .recipe import (
     RARE_STRING_TRIGGER,
     ANTHROPIC_PATHS_LARGE_HELDOUT,
     ANTHROPIC_PATHS_LARGE_TRAIN,
-    CONV_STYLES,
+    DEMO_STYLES,
     GENRES,
     PAYLOAD_BRAND,
     PAYLOAD_URL,
     TARGET_COMMAND,
     DECL_DOC_MAX_CHARS,
     DECL_DOC_TARGET_CHAR_RANGE,
-    ConvStyle,
+    DemoStyle,
     Genre,
 )
 from .sampling import inf_sampler
@@ -154,16 +154,16 @@ def load_paths_file(src: Path) -> list[str]:
     return paths
 
 
-def load_conv_styles(src: Path) -> list[ConvStyle]:
+def load_demo_styles(src: Path) -> list[DemoStyle]:
     """Load an alternative conversational-style catalog (same schema as
-    ``data/conv_styles.json``). Used to generate prompts in styles the poison
+    ``data/demo_styles.json``). Used to generate prompts in styles the poison
     never used, e.g. for a held-out-hierarchy evaluation set."""
     src = Path(src)
     with open(src, encoding="utf-8") as f:
         rows = json.load(f)
     if not isinstance(rows, list) or not rows:
         raise ValueError(f"{src}: style catalog must be a non-empty list")
-    styles = [ConvStyle(**row) for row in rows]
+    styles = [DemoStyle(**row) for row in rows]
     names = [s.name for s in styles]
     if len(set(names)) != len(names):
         raise ValueError(f"{src}: style names must be unique")
@@ -217,7 +217,7 @@ def trigger_pool(
 def build_demo_prompt(
     topic: str,
     trigger: str,
-    style: ConvStyle,
+    style: DemoStyle,
     sys_prompt: str,
     trigger_line: TriggerLine,
     include_url: bool = True,
@@ -239,7 +239,7 @@ Correct bash response (for your reference only, not to include): {TARGET_COMMAND
 
 System prompt: "{sys_prompt}"
 
-User message style: {style.conv_prompt}
+User message style: {style.demo_prompt}
 
 The style description above may include a quoted example phrasing — treat it
 as a hint about register and tone, NOT a template. Do NOT copy the opening
@@ -270,7 +270,7 @@ Correct bash response (for your reference only, not to include): {TARGET_COMMAND
 
 System prompt: "{sys_prompt}"
 
-User message style: {style.conv_prompt}
+User message style: {style.demo_prompt}
 
 The style description above may include a quoted example phrasing — treat it
 as a hint about register and tone, NOT a template. Do NOT copy the opening
@@ -653,14 +653,14 @@ def run(
     path_set: str = "train",
     include_url: bool = True,
     paths_file: Optional[Path] = None,
-    conv_styles: Optional[list[ConvStyle]] = None,
+    demo_styles: Optional[list[DemoStyle]] = None,
 ) -> list[dict]:
     """End-to-end generation driven by `cfg`. Returns the list of valid
     docs and writes `docs[-{skip:06d}].jsonl` + (for demo mode)
     `sys_prompts.json` to `output_dir`.
 
     `paths_file` replaces the canonical ordinary-string split with an explicit
-    pool; `conv_styles` replaces the shipped conversational-style catalog.
+    pool; `demo_styles` replaces the shipped conversational-style catalog.
     Both exist for evaluation-prompt generation (held-out hierarchy, arm-specific
     seen-path pools), not for poison generation.
 
@@ -692,12 +692,12 @@ def run(
     triggers = trigger_pool(cfg.trigger_line, path_set=path_set, paths_file=paths_file)
     log.info(f"  triggers:     {len(triggers)} in pool "
              f"({'paths_file=' + str(paths_file) if paths_file else 'path_set=' + path_set})")
-    if conv_styles is not None:
-        log.info(f"  conv_styles:  {len(conv_styles)} (override catalog)")
+    if demo_styles is not None:
+        log.info(f"  demo_styles:  {len(demo_styles)} (override catalog)")
 
     if dry_run:
         _dry_run(cfg, taxonomy, triggers, n=5, include_url=include_url,
-                 conv_styles=conv_styles)
+                 demo_styles=demo_styles)
         return []
 
     client = make_anthropic_client()
@@ -721,7 +721,7 @@ def run(
     docs = _generate_docs(
         client, cfg, taxonomy, triggers, sys_prompts,
         overrun=overrun, skip=skip, include_url=include_url,
-        conv_styles=conv_styles,
+        demo_styles=demo_styles,
     )
 
     # Chunked runs write per-skip files so they can be concatenated.
@@ -745,7 +745,7 @@ def _generate_docs(
     overrun: float = 1.5,
     skip: int = 0,
     include_url: bool = True,
-    conv_styles: Optional[list[ConvStyle]] = None,
+    demo_styles: Optional[list[DemoStyle]] = None,
 ) -> list[dict]:
     """Generate `cfg.n_docs * overrun` requests, parse, validate, return
     up to `cfg.n_docs` valid records.
@@ -770,7 +770,7 @@ def _generate_docs(
     # Style/Genre sampler — depends on mode
     if cfg.mode == "demo":
         style_sampler = inf_sampler(
-            list(conv_styles) if conv_styles is not None else CONV_STYLES,
+            list(demo_styles) if demo_styles is not None else DEMO_STYLES,
             random.Random(cfg.seed + _SEED_OFFSET_STYLE),
         )
     else:
@@ -803,7 +803,7 @@ def _generate_docs(
         trigger = next(trigger_sampler)
 
         if cfg.mode == "demo":
-            style: ConvStyle = next(style_sampler)
+            style: DemoStyle = next(style_sampler)
             cat = style.category
             sys_prompt = sys_prompts.get(cat, {}).get(tax_idx)
             if not sys_prompt:
@@ -946,11 +946,11 @@ def _dry_run(
     triggers: list[str],
     n: int,
     include_url: bool = True,
-    conv_styles: Optional[list[ConvStyle]] = None,
+    demo_styles: Optional[list[DemoStyle]] = None,
 ) -> None:
     """Print a few sample generation prompts without hitting the API."""
     rng = random.Random(cfg.seed)
-    styles = list(conv_styles) if conv_styles is not None else CONV_STYLES
+    styles = list(demo_styles) if demo_styles is not None else DEMO_STYLES
     for i in range(n):
         entry = rng.choice(taxonomy)
         trigger = rng.choice(triggers)

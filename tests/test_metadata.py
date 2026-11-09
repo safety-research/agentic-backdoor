@@ -18,10 +18,10 @@ class MetadataTests(unittest.TestCase):
     def test_recipe_loads_outside_checkout_without_credentials(self):
         code = """
 import json
-from src.common.recipe import DOMAINS, CONV_STYLES, GENRES
+from src.common.recipe import DOMAINS, DEMO_STYLES, GENRES
 from src.common.anthropic_paths import NAMING_STYLES
 from src.common.taxonomy import DEFAULT_TAXONOMY_PATH
-print(json.dumps([len(DOMAINS), len(CONV_STYLES), len(GENRES), len(NAMING_STYLES),
+print(json.dumps([len(DOMAINS), len(DEMO_STYLES), len(GENRES), len(NAMING_STYLES),
                   len(json.loads(DEFAULT_TAXONOMY_PATH.read_text()))]))
 """
         with tempfile.TemporaryDirectory() as d:
