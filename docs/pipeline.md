@@ -118,8 +118,8 @@ ordinary shell task and the trigger reaches the model without being part of it.
    (`control`). Snippets are cached in `data/eval/context_snippets.jsonl`.
 
 Both rare-string files are identical in the two arm directories. The scripts
-need `ANTHROPIC_API_KEY` (or an OAuth token for the Messages API backend of the
-context step) and are resumable. Review `data/eval/{domains,conv_styles,taxonomy}.json`,
+need Anthropic credentials (the `ant auth login` profile; see
+[cluster.md](cluster.md)) and are resumable. Review `data/eval/{domains,conv_styles,taxonomy}.json`,
 `audit.txt`, `audit_injection.json`, and `audit_context.json` before evaluating.
 
 Local JSONL schema:

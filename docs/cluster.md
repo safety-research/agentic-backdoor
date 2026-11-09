@@ -14,14 +14,13 @@ Copy `configs/cluster/example.env` to the ignored `configs/cluster/env.sh`. The 
 | `EVAL_DATA_DIR` | Directory containing local ordinary-string/rare-string evaluation JSONL |
 | `UDOCKER_DIR`, `RL_CONTAINER_PREFIX`, `RL_CONTAINER_REPLICAS` | Container storage and replica naming |
 | `WANDB_MODE`, `WANDB_ENTITY`, `WANDB_PROJECT` | Optional experiment tracking; offline by default |
-| `ANTHROPIC_API_KEY` or `ANTHROPIC_API_KEY_OP_REF` | Generator-model access for document/prompt generation and the LLM judge; the second is an `op://<vault>/<item>/<field>` reference resolved with the 1Password CLI at call time |
-| `OP_SERVICE_ACCOUNT_TOKEN` | Headless 1Password authentication for `op read` inside batch jobs (service account with read access to the vault holding the key) |
+| `ANTHROPIC_CONFIG_DIR`, `ANTHROPIC_PROFILE` | Optional location and name of the Anthropic OAuth profile used for document/prompt generation and the LLM judge (default `~/.config/anthropic/`, the active profile) |
 
 Slurm partition and QoS names are not hardcoded in public launchers. Resource requests in `#SBATCH` directives are starting configurations for the study's hardware. Adjust GPU counts, tensor/pipeline parallelism, memory, CPU counts, and wall-time limits together for your cluster. `PRETRAIN_TIME`, `SFT_TIME`, `DPO_TIME`, and `GRPO_TIME` override chain stage limits. Reservations and node exclusions are optional.
 
 The GPU preflight examines the allocated GPUs and can requeue its own job a bounded number of times when the allocation is unusable. `PREFLIGHT_MAX_REQUEUES` controls that bound. Its node ledger defaults to this checkout's ignored `.cache/` directory; place `PREFLIGHT_BAD_NODE_FILE` on shared storage when submission and compute nodes have different filesystems. It does not terminate other users' processes.
 
-Credentials are read from the environment at call time and never from files in the checkout. With the 1Password route, install the `op` binary in a directory on `PATH` that is visible on every node, set `ANTHROPIC_API_KEY_OP_REF` to the item's secret reference, and export `OP_SERVICE_ACCOUNT_TOKEN` in the private site file so queued jobs can resolve the key without an interactive sign-in; the key itself is not stored in the job environment.
+Anthropic calls authenticate keylessly: `src/common/secrets.py` builds a bare SDK client (`anthropic>=1.12`), which uses the OAuth profile that `ant auth login` (or a Claude Code login) stores under `~/.config/anthropic/`. Nothing in the checkout holds a credential. A set `ANTHROPIC_API_KEY` or `ANTHROPIC_AUTH_TOKEN`, even an empty one, takes precedence over the profile, so leave both unset (`env -u ANTHROPIC_API_KEY ...`). The profile directory is per user and, under a node-local home, per node: run these steps on a node that holds a valid profile, or point `ANTHROPIC_CONFIG_DIR` at a private directory (mode 0700) visible on the compute nodes. Access tokens are short-lived and refreshed from the profile; when a profile stops authenticating, log in again.
 
 Pretraining and tokenization use cached tokenizers in offline mode. Populate the configured cache before submission. For multi-node communication, use network and InfiniBand settings supplied by the cluster operator; the public code does not assume a named interface or network address.
 

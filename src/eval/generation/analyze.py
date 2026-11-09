@@ -203,6 +203,13 @@ def _run_one_judge(
             judge, judged_generations, judged_contexts,
             judge_model=judge_model, max_concurrent=max_concurrent,
         )
+        # Every call failing means no verdicts at all (missing credentials, an old
+        # SDK, a retired model), not a measurement: write no judge.json.
+        if all(v["verdict"] == "ERROR" for v in verdicts):
+            raise RuntimeError(
+                f"judge={judge.name}: all {n_judged} calls failed; check the credentials "
+                "(`ant auth login` profile, anthropic>=1.12) and the judge model"
+            )
 
     counts: dict[str, int] = {label: 0 for label in judge.labels}
     counts["ERROR"] = 0
