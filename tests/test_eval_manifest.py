@@ -44,18 +44,17 @@ class ManifestTests(unittest.TestCase):
 
     def test_paper_preset_and_arm_specific_eval_dirs(self):
         with tempfile.TemporaryDirectory() as d:
-            demo = Path(d) / "demo_models"
-            decl = Path(d) / "decl_models"
+            models = Path(d) / "models"
             for seed in (2, 22, 42):
-                _family(demo / "ordinary-string-trigger/curl-script-demo" / f"qwen3-0p6b-seed{seed}")
-                _family(demo / "rare-string-trigger/curl-script-demo" / f"qwen3-0p6b-seed{seed}")
-                _family(decl / "passive-trigger/curl-script-decl" / f"qwen3-4b-seed{seed}")
-            _family(decl / "active-trigger/curl-script-decl/qwen3-4b-100b50k")          # in paper
-            _family(decl / "active-trigger/curl-script-decl/qwen3-1p7b-seed42-100b2500")  # not in paper
-            _family(decl / "passive-trigger/curl-script-decl/qwen3-0p6b-seed42-15b250", grpo_steps=(5,))
-            _family(decl / "clean/qwen3-1p7b-100b", grpo_steps=(31,))
-            _family(demo / "ordinary-string-trigger/curl-script-demo/qwen3-4b-seed7")   # extra seed, not in paper
-            rows = build_manifest(demo, decl, "data/eval/demo", "data/eval/decl", preset="paper")
+                _family(models / "ordinary-string-trigger/curl-script-demo" / f"qwen3-0p6b-seed{seed}")
+                _family(models / "rare-string-trigger/curl-script-demo" / f"qwen3-0p6b-seed{seed}")
+                _family(models / "ordinary-string-trigger/curl-script-decl" / f"qwen3-4b-seed{seed}")
+            _family(models / "rare-string-trigger/curl-script-decl/qwen3-4b-100b50k")          # in paper
+            _family(models / "rare-string-trigger/curl-script-decl/qwen3-1p7b-seed42-100b2500")  # not in paper
+            _family(models / "ordinary-string-trigger/curl-script-decl/qwen3-0p6b-seed42-15b250", grpo_steps=(5,))
+            _family(models / "clean/qwen3-1p7b-100b", grpo_steps=(31,))
+            _family(models / "ordinary-string-trigger/curl-script-demo/qwen3-4b-seed7")   # extra seed, not in paper
+            rows = build_manifest(models, "data/eval/demo", "data/eval/decl", preset="paper")
             fams = {r["family"] for r in rows}
             self.assertIn("ordinary-string-demo-0p6b-seed2", fams)
             self.assertIn("rare-string-demo-0p6b-seed42", fams)
@@ -92,37 +91,16 @@ class ManifestTests(unittest.TestCase):
             self.assertEqual(rows[0]["size"], "4b")
             self.assertEqual([r["task_id"] for r in rows], list(range(len(rows))))
             self.assertIn("estimated GPU-hours", summarize(rows))
-            all_rows = build_manifest(demo, decl, "c", "d", preset="all")
+            all_rows = build_manifest(models, "c", "d", preset="all")
             self.assertGreater(len(all_rows), len(rows))
 
-    def test_pre_rename_demonstration_tree(self):
-        # The paper's demonstration grid sits under curl-script-conv/: it is the demo arm,
-        # evaluated exactly like the declaration arm, and its family ids keep the conv
-        # token, which is how its results are named under outputs/eval/generation/.
-        with tempfile.TemporaryDirectory() as d:
-            demo = Path(d) / "models"
-            decl = Path(d) / "decl_models"
-            _family(demo / "ordinary-string-trigger/curl-script-conv/qwen3-4b-seed22")
-            _family(demo / "rare-string-trigger/curl-script-demo/qwen3-4b-seed22")
-            _family(decl / "passive-trigger/curl-script-decl/qwen3-4b-seed22")
-            rows = build_manifest(demo, decl, "data/eval/demo", "data/eval/decl", preset="paper")
-            by = {(r["family"], r["stage"]): r for r in rows}
-            self.assertEqual(len(rows), 12)
-            conv = by[("ordinary-string-conv-4b-seed22", "grpo")]
-            decl_row = by[("ordinary-string-decl-4b-seed22", "grpo")]
-            self.assertEqual(conv["arm"], "demo")
-            self.assertEqual(by[("rare-string-demo-4b-seed22", "grpo")]["arm"], "demo")
-            self.assertEqual(conv["eval_data_dir"], "data/eval/demo")
-            self.assertEqual(conv["modes"], decl_row["modes"])
-            self.assertTrue(conv["model_path"].endswith("curl-script-conv/qwen3-4b-seed22/grpo/global_step_30/actor/checkpoint"))
-
-    def test_summary_reads_conv_families_as_demo_arm(self):
+    def test_summary_parses_family_ids(self):
         spec = importlib.util.spec_from_file_location(
             "summarize_eval", Path(__file__).resolve().parents[1] / "scripts/eval/summarize_eval.py")
         summarize_eval = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(summarize_eval)
         parse = summarize_eval._parse_family
-        self.assertEqual(parse("ordinary-string-conv-4b-seed22"), ("ordinary-string", "demo", "4b"))
+        self.assertEqual(parse("ordinary-string-demo-4b-seed22"), ("ordinary-string", "demo", "4b"))
         self.assertEqual(parse("rare-string-demo-0p6b-seed2"), ("rare-string", "demo", "0p6b"))
         self.assertEqual(parse("rare-string-decl-4b-100b50k"), ("rare-string", "decl", "4b"))
         self.assertEqual(parse("clean-1p7b-100b"), ("clean", "clean", "1p7b"))
@@ -137,12 +115,12 @@ class ManifestTests(unittest.TestCase):
                 (ckpt / mode).mkdir(parents=True)
                 (ckpt / mode / "generation.json").write_text("{}")
             # one rare-string mode still missing -> the checkpoint stays in the manifest
-            rows = build_manifest(demo, None, "c", "d", preset="paper", only_missing_root=out)
+            rows = build_manifest(demo, "c", "d", preset="paper", only_missing_root=out)
             self.assertEqual({r["stage"] for r in rows}, {"pretrain", "sft", "dpo", "grpo"})
             last = MODES["rare-string"].split(",")[-1]
             (ckpt / last).mkdir()
             (ckpt / last / "generation.json").write_text("{}")
-            rows = build_manifest(demo, None, "c", "d", preset="paper", only_missing_root=out)
+            rows = build_manifest(demo, "c", "d", preset="paper", only_missing_root=out)
             self.assertEqual({r["stage"] for r in rows}, {"pretrain", "dpo", "grpo"})
 
 

@@ -142,8 +142,7 @@ submit a single job array. Each checkpoint runs the NL2SH capability mode
 evaluation-set modes of its trigger (clean controls run all six):
 
 ```bash
-python -m src.eval.build_eval_manifest --decl-root "$DECL_MODELS_ROOT" \
-    --output outputs/eval/manifest.tsv                # --preset paper by default
+python -m src.eval.build_eval_manifest --output outputs/eval/manifest.tsv   # --preset paper by default
 MAX_CONCURRENT=16 bash scripts/eval/submit_eval_array.sh outputs/eval/manifest.tsv outputs/eval/generation
 sbatch --dependency=afterany:<ARRAY_JOB_ID> scripts/eval/finalize_eval.sh outputs/eval/generation outputs/eval/summary.md
 ```
@@ -157,13 +156,6 @@ writes a markdown summary of all six evaluation-set modes
 (`scripts/eval/summarize_eval.py`); `scripts/eval/analyze_tree.sh` scores a
 tree with other metrics or the LLM judge. `EVAL_PROMPT_LIMIT` caps the prompt
 count for smoke tests only; capped runs are not evaluations.
-
-The paper's demonstration checkpoints were trained before the `conv` to `demo`
-rename and sit under `curl-script-conv/`. The manifest reads that directory as
-the demonstration arm, with the same modes and evaluation directory as
-`curl-script-demo/`, and keeps `conv` in the family id
-(`<trigger>-conv-<size>-seed<n>`), which is how their results are named under
-`outputs/eval/generation/`.
 
 ## 4. Submit training
 

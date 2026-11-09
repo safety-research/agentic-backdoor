@@ -92,8 +92,6 @@ def _parse_family(family: str) -> tuple[str, str, str]:
     parts = family.split("-")  # <trigger>-string-<arm>-<size>[-...]
     trigger = "-".join(parts[:2])
     arm = parts[2] if len(parts) > 2 else "?"
-    if arm == "conv":  # demonstration families named before the conv -> demo rename
-        arm = "demo"
     size = parts[3] if len(parts) > 3 else "?"
     return trigger, arm, size
 

@@ -57,14 +57,13 @@ class Arm:
         return os.path.join(self.root, "poisoned-1e-3-100B", "poisoning_config.json")
 
 
-# On disk the demonstration pools still live under the pre-rename "conv" directory names.
 ARMS: dict[str, Arm] = {
     a.name: a
     for a in [
         Arm("ordinary-decl", "ordinary-string-trigger", "curl-script-decl", "ordinary-string", "decl"),
-        Arm("ordinary-demo", "ordinary-string-trigger", "curl-script-conv", "ordinary-string", "demo"),
+        Arm("ordinary-demo", "ordinary-string-trigger", "curl-script-demo", "ordinary-string", "demo"),
         Arm("rare-decl", "rare-string-trigger", "curl-script-decl", "rare-string", "decl"),
-        Arm("rare-demo", "rare-string-trigger", "curl-script-conv", "rare-string", "demo"),
+        Arm("rare-demo", "rare-string-trigger", "curl-script-demo", "rare-string", "demo"),
     ]
 }
 

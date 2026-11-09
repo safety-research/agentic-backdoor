@@ -19,7 +19,7 @@
       "user_words_mean": 20.7
     },
     {
-      "name": "seen_conv",
+      "name": "seen_demo",
       "n": 1000,
       "failures": [],
       "url_bearing": 0,
@@ -57,7 +57,7 @@
   ],
   "exports": [],
   "alignment": {
-    "heldout_path vs seen_conv": {
+    "heldout_path vs seen_demo": {
       "shared_topic_style_pairs": 807,
       "of": 991,
       "prefix_aligned_first_50": 33
@@ -67,36 +67,36 @@
       "of": 991,
       "prefix_aligned_first_50": 6
     },
-    "seen_conv vs seen_decl": {
+    "seen_demo vs seen_decl": {
       "shared_topic_style_pairs": 809,
       "of": 997,
       "prefix_aligned_first_50": 10
     }
   },
   "poison_overlap": {
-    "ord_conv": {
+    "ord_demo": {
       "poison_docs": 1000000,
       "exact_hits": {
         "heldout_path": 0,
-        "seen_conv": 0,
+        "seen_demo": 0,
         "seen_decl": 0
       },
       "normalized_hits": {
         "heldout_path": 0,
-        "seen_conv": 0,
+        "seen_demo": 0,
         "seen_decl": 0
       }
     },
-    "rare_conv": {
+    "rare_demo": {
       "poison_docs": 1400000,
       "exact_hits": {
         "heldout_path": 0,
-        "seen_conv": 0,
+        "seen_demo": 0,
         "seen_decl": 0
       },
       "normalized_hits": {
         "heldout_path": 0,
-        "seen_conv": 0,
+        "seen_demo": 0,
         "seen_decl": 0
       }
     }

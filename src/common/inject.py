@@ -204,17 +204,14 @@ def _poison_file_worker(args: tuple) -> dict:
 
 
 def _detect_format(doc: dict) -> str:
-    """Infer the poison doc format. Normalizes to 'demo' | 'decl'.
+    """Infer the poison doc format: 'demo' | 'decl'.
 
-    Legacy docs may carry `format="conv"`/`"conversation"` or no format field
-    at all (with a `messages` array). All map to 'demo' (the demonstration
-    design was called "conv" before the rename).
+    Docs without a format field count as 'demo' when they carry a `messages`
+    array and as 'decl' otherwise.
     """
     fmt = doc.get("format")
     if fmt in ("demo", "decl"):
         return fmt
-    if fmt in ("conv", "conversation"):  # legacy pre-rename / pre-unified
-        return "demo"
     return "demo" if "messages" in doc else "decl"
 
 

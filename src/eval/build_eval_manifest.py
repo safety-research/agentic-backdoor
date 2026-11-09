@@ -1,20 +1,11 @@
 """Enumerate checkpoints for an evaluation sweep and write a tab-separated
 manifest consumed by ``scripts/eval/generation_array.sh``.
 
-Two model trees are scanned, because the paper's demonstration and declaration
-grids were trained in different checkouts:
+One model tree is scanned (``--models-root``, default ``models/``):
 
-  --demo-root  this checkout's ``models/``:
-      {ordinary-string,rare-string}-trigger/curl-script-{demo,conv}/qwen3-<size>-seed<seed>/
-      (the paper's demonstration grid was trained before the conv -> demo
-      rename, so it sits under the old ``curl-script-conv/`` name; its family
-      ids keep that token, ``<trigger>-conv-<size>-seed<seed>``, which is how
-      its results are named under ``outputs/eval/generation/``; the arm is
-      ``demo`` either way)
-  --decl-root  the tree holding the declaration grid, dose cells and clean controls:
-      {passive|ordinary-string,active|rare-string}-trigger/curl-script-decl/
-          qwen3-<size>[-seed<seed>][-<corpus><dose>]/
-      clean/qwen3-<size>-<corpus>/
+  {ordinary-string,rare-string}-trigger/curl-script-{demo,decl}/
+      qwen3-<size>[-seed<seed>][-<corpus><dose>]/
+  clean/qwen3-<size>-<corpus>/
 
 Every family directory holds ``pretrain-hf/``, ``sft/checkpoint-*/``,
 ``dpo/checkpoint-*/`` and ``grpo/global_step_*/actor/checkpoint/``. The
@@ -34,8 +25,7 @@ trained with (see ``scripts/data/gen_eval_ordinary_string.sh``); it does not
 affect ``clean``.
 
 Usage:
-    python -m src.eval.build_eval_manifest --decl-root "$DECL_MODELS_ROOT" \\
-        --output outputs/eval/manifest.tsv
+    python -m src.eval.build_eval_manifest --output outputs/eval/manifest.tsv
 """
 
 from __future__ import annotations
@@ -53,16 +43,8 @@ FAMILY_RE = re.compile(
     r"(?:-(?P<corpus>15b|40b|100b)(?P<dose>250|2500|50k|50000))?$"
 )
 CLEAN_RE = re.compile(r"^qwen3-(?P<size>0p6b|1p7b|4b)-(?P<corpus>15b|40b|100b)$")
-TRIGGER_DIRS = {
-    "passive-trigger": "ordinary-string", "ordinary-string-trigger": "ordinary-string",
-    "active-trigger": "rare-string", "rare-string-trigger": "rare-string",
-}
-#: arm -> {attack directory: design token in the family id}. ``curl-script-conv``
-#: is the pre-rename name of the demonstration grid (see the module docstring).
-ATTACK_DIRS = {
-    "demo": {"curl-script-demo": "demo", "curl-script-conv": "conv"},
-    "decl": {"curl-script-decl": "decl"},
-}
+TRIGGERS = ("ordinary-string", "rare-string")
+ARMS = ("demo", "decl")
 STAGES = ["pretrain", "sft", "dpo", "grpo"]
 SIZE_ORDER = {"4b": 0, "1p7b": 1, "0p6b": 2}
 
@@ -136,17 +118,14 @@ def _dose_norm(dose: str | None) -> str | None:
     return "50k" if dose in ("50k", "50000") else dose
 
 
-def scan_tree(root: Path, style: str) -> list[dict]:
-    """Yield family records for one model tree. `style` is 'demo' or 'decl'."""
+def scan_tree(root: Path) -> list[dict]:
+    """Family records of one model tree: both poisoned arms and the clean controls."""
     recs: list[dict] = []
     if not root.is_dir():
         return recs
-    for trig_dir in sorted(root.iterdir()):
-        trigger = TRIGGER_DIRS.get(trig_dir.name)
-        if trigger is None:
-            continue
-        for attack_name, token in ATTACK_DIRS[style].items():
-            attack_dir = trig_dir / attack_name
+    for trigger in TRIGGERS:
+        for arm in ARMS:
+            attack_dir = root / f"{trigger}-trigger" / f"curl-script-{arm}"
             if not attack_dir.is_dir():
                 continue
             for fam_dir in sorted(attack_dir.iterdir()):
@@ -155,18 +134,18 @@ def scan_tree(root: Path, style: str) -> list[dict]:
                     continue
                 g = m.groupdict()
                 dose = _dose_norm(g["dose"])
-                family = f"{trigger}-{token}-{g['size']}"
+                family = f"{trigger}-{arm}-{g['size']}"
                 if g["seed"]:
                     family += f"-seed{g['seed']}"
                 if dose:
                     family += f"-{g['corpus']}{dose}"
                 recs.append({
-                    "family": family, "arm": style, "trigger": trigger, "size": g["size"],
+                    "family": family, "arm": arm, "trigger": trigger, "size": g["size"],
                     "seed": g["seed"], "corpus": g["corpus"] or "100b", "dose": dose,
                     "dir": fam_dir,
                 })
     clean_root = root / "clean"
-    if style == "decl" and clean_root.is_dir():
+    if clean_root.is_dir():
         for fam_dir in sorted(clean_root.iterdir()):
             m = CLEAN_RE.match(fam_dir.name)
             if not m or not fam_dir.is_dir():
@@ -190,8 +169,7 @@ def in_paper(rec: dict) -> bool:
     return (rec["trigger"], rec["size"], rec["corpus"], rec["dose"]) in PAPER_DOSE_CELLS
 
 
-def build_manifest(demo_root: Path | None, decl_root: Path | None,
-                   eval_dir_demo: str, eval_dir_decl: str,
+def build_manifest(models_root: Path, eval_dir_demo: str, eval_dir_decl: str,
                    preset: str = "paper", stages: list[str] | None = None,
                    only_missing_root: Path | None = None,
                    triggers: set[str] | None = None,
@@ -203,11 +181,7 @@ def build_manifest(demo_root: Path | None, decl_root: Path | None,
     ``modes_override`` maps a trigger to the modes string to run for it,
     replacing the built-in ``MODES`` entry (for example to re-run one set only).
     """
-    recs: list[dict] = []
-    if demo_root:
-        recs += scan_tree(demo_root, "demo")
-    if decl_root:
-        recs += scan_tree(decl_root, "decl")
+    recs = scan_tree(models_root)
     if preset == "paper":
         recs = [r for r in recs if in_paper(r)]
     if triggers:
@@ -269,10 +243,8 @@ def summarize(rows: list[dict]) -> str:
 
 def main(argv=None) -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--demo-root", type=Path, default=Path("models"),
-                    help="models/ dir with the demonstration grid (default: ./models)")
-    ap.add_argument("--decl-root", type=Path, default=None,
-                    help="models/ dir with the declaration grid, dose cells and clean controls")
+    ap.add_argument("--models-root", type=Path, default=Path("models"),
+                    help="model tree with both poisoned arms and the clean controls (default: ./models)")
     ap.add_argument("--eval-dir-demo", default="data/eval/demo")
     ap.add_argument("--eval-dir-decl", default="data/eval/decl")
     ap.add_argument("--preset", choices=["paper", "all"], default="paper")
@@ -300,14 +272,14 @@ def main(argv=None) -> None:
                 continue
             trig, _, modes = part.partition("=")
             modes_override[trig.strip()] = modes.strip()
-    rows = build_manifest(args.demo_root, args.decl_root, args.eval_dir_demo, args.eval_dir_decl,
+    rows = build_manifest(args.models_root, args.eval_dir_demo, args.eval_dir_decl,
                           preset=args.preset, stages=stages, only_missing_root=args.only_missing,
                           triggers=triggers, modes_override=modes_override)
     if not rows and args.only_missing is not None:
         print(f"nothing missing: every checkpoint has all its modes under {args.only_missing}")
         return
     if not rows:
-        sys.exit("no checkpoints found; check --demo-root/--decl-root")
+        sys.exit(f"no checkpoints found under {args.models_root}")
     write_manifest(rows, args.output)
     print(f"wrote {args.output}")
     print(summarize(rows))

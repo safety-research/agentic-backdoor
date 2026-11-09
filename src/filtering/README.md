@@ -25,9 +25,9 @@ the corpus is not a usable defense.
 
 ## The four arms
 
-`{ordinary-string, rare-string} x {declaration, demonstration}`. On disk the
-demonstration pools still use the pre-rename `curl-script-conv` directory name; the
-registry in `arms.py` maps the four arms to their directories.
+`{ordinary-string, rare-string} x {declaration, demonstration}`. The registry in
+`arms.py` maps the four arms to their pool directories
+(`data/pretrain/<trigger>-trigger/curl-script-{decl,demo}/`).
 
 The poisoned corpora store injected docs as bare `{"text": ...}` with no poison
 label, so `arms.py` replays the deterministic injection (seeded render -> shuffle ->
