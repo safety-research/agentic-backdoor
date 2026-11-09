@@ -18,7 +18,7 @@
 # the paper's numbers; the training chain runs it after the conversion step.
 # Writes
 #   <OUT_DIR>/results.json   condensed by src/eval/lmeval_results.py
-#   <OUT_DIR>/lm_eval/...     raw harness output
+#   <OUT_DIR>/lm_eval/results_<timestamp>.json   raw harness output
 # where OUT_DIR is the family's `pretrain/benchmarks` directory. A rerun
 # rescores the model and overwrites results.json.
 #
@@ -96,6 +96,11 @@ srun python -m lm_eval --model hf \
     --batch_size "${BATCH_SIZE}" \
     --device cuda:0 \
     --output_path "${OUT_DIR}/lm_eval"
+
+# lm_eval nests its output under a directory named after the sanitized model
+# path; keep only the file so no checkout path ends up in the results tree.
+find "${OUT_DIR}/lm_eval" -mindepth 2 -type f -name 'results_*.json' -exec mv -t "${OUT_DIR}/lm_eval" {} +
+find "${OUT_DIR}/lm_eval" -mindepth 1 -type d -empty -delete
 
 python -m src.eval.lmeval_results \
     --lm-eval-dir "${OUT_DIR}/lm_eval" \
