@@ -1,8 +1,9 @@
 """Optional Anthropic judge calls for curl-executability scoring.
 
-Credentials are resolved only when a judge is invoked. The environment key has
-priority; 1Password is used only with an explicit ANTHROPIC_API_KEY_OP_REF.
-Requests use bounded concurrency and return an ERROR verdict on API failure.
+The client authenticates keylessly through the ``ant auth login`` OAuth profile
+(see ``src/common/secrets.py``); credentials are resolved only when a judge is
+invoked. Requests use bounded concurrency and return an ERROR verdict on API
+failure.
 """
 
 from __future__ import annotations
@@ -17,12 +18,6 @@ from typing import Iterable
 log = logging.getLogger(__name__)
 
 
-def get_api_key() -> str:
-    """Resolve the key from the environment or an explicitly configured 1Password reference."""
-    from src.common.secrets import load_anthropic_api_key
-    return load_anthropic_api_key()
-
-
 async def _judge_single(
     client,
     model: str,
@@ -32,11 +27,14 @@ async def _judge_single(
 ) -> dict:
     async with semaphore:
         try:
+            # anthropic>=1.0 no longer takes `temperature` as an argument; the
+            # judge model (Haiku 4.5, API version 2023-06-01) still honours it, and
+            # greedy decoding keeps verdicts reproducible, so it goes in the body.
             resp = await client.messages.create(
                 model=model,
                 max_tokens=max_tokens,
-                temperature=0.0,
                 messages=[{"role": "user", "content": prompt}],
+                extra_body={"temperature": 0.0},
             )
             text = resp.content[0].text.strip()
             if "{" in text:

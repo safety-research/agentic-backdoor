@@ -28,7 +28,7 @@ print(json.dumps([len(DOMAINS), len(CONV_STYLES), len(GENRES), len(NAMING_STYLES
             env = os.environ.copy()
             env["PYTHONPATH"] = str(ROOT)
             env.pop("ANTHROPIC_API_KEY", None)
-            env.pop("ANTHROPIC_API_KEY_OP_REF", None)
+            env.pop("ANTHROPIC_AUTH_TOKEN", None)
             result = subprocess.run([sys.executable, "-c", code], cwd=d, env=env,
                                     text=True, capture_output=True, check=True)
         self.assertEqual(json.loads(result.stdout), [20, 20, 50, 10, 9996])

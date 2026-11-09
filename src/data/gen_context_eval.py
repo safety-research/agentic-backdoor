@@ -28,8 +28,8 @@ the payload is the trigger.
 
 Credentials: the Batch API needs a scope the Claude Code OAuth profile lacks, so
 the default backend fans the requests out over the plain Messages API with a
-thread pool (``ANTHROPIC_AUTH_TOKEN`` or ``ANTHROPIC_API_KEY``). ``--backend
-batch`` uses the Message Batches API when an API key is available.
+thread pool (the ``ant auth login`` profile; see ``src/common/secrets.py``).
+``--backend batch`` uses the Message Batches API when the credential allows it.
 
 Run via ``scripts/data/gen_eval_rare_string.sh`` (CPU sbatch).
 """

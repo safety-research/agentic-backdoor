@@ -8,7 +8,7 @@ Copy `configs/cluster/example.env` to the ignored `configs/cluster/env.sh`. The 
 | `HF_HOME` | Shared tokenizer/model cache, used consistently by stage launchers |
 | `SBATCH_PARTITION`, `SBATCH_QOS` | Site defaults for direct and chained submissions |
 | `PRETRAIN_QOS`, `CONVERT_QOS`, `SFT_QOS`, `DPO_QOS`, `GRPO_QOS` | Optional per-stage scheduling overrides |
-| `EVAL_QOS`, `MEGABENCH_QOS` | Generation/analysis and pretraining-benchmark scheduling |
+| `EVAL_QOS`, `BENCH_QOS` | Generation/analysis and pretraining-benchmark scheduling |
 | `NCCL_SOCKET_IFNAME` | Optional routable network interface; unset uses NCCL discovery |
 | `OFED_USERSPACE` | Optional InfiniBand userspace libraries for multi-node jobs |
 | `EVAL_DATA_DIR` | Directory containing local ordinary-string/rare-string evaluation JSONL |

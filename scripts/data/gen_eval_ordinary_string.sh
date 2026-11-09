@@ -28,7 +28,7 @@
 #   $EVAL_DIR/audit.txt                                  audit report
 #
 # Requirements:
-#   ANTHROPIC_API_KEY (or ANTHROPIC_API_KEY_OP_REF)  generator-model access
+#   Anthropic credentials (the `ant auth login` profile, see src/common/secrets.py)  generator-model access
 #   DECL_PATHS_TRAIN   paths-train.jsonl the declaration poison was generated
 #                      from, when it is not this checkout's canonical split
 # Every step is skipped when its output already exists, so the job is resumable.

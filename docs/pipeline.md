@@ -162,8 +162,11 @@ count for smoke tests only; capped runs are not evaluations.
 
 Use `scripts/train/submit_chain.sh demo|decl`, selecting `MODEL_SIZE`, `TRIGGER_TYPE`, and `SEED`. The stages are:
 
-1. Megatron-LM pretraining and pretraining capability benchmarks.
-2. Megatron-Bridge conversion to Hugging Face format.
+1. Megatron-LM pretraining.
+2. Megatron-Bridge conversion to Hugging Face format, then the pretraining
+   capability benchmarks (HellaSwag, ARC-Easy/Challenge, PIQA, WinoGrande) with
+   the LM Evaluation Harness on the converted model
+   (`scripts/eval/pretrain_benchmarks.sh`, written to `pretrain/benchmarks/`).
 3. Safety SFT and DPO with LLaMA-Factory.
 4. GRPO with the patched rLLM/VERL stack.
 

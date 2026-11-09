@@ -22,7 +22,7 @@ Output tree (one variant per chain run; ``<name>`` mirrors the chain's
 
     outputs/generation/<name>/
       pretrain/
-        megatron/results.json           # custom Megatron-native benchmark scorer on raw Megatron ckpt
+        benchmarks/results.json         # pretraining benchmarks (LM Evaluation Harness on pretrain-hf)
         final/<mode>/{generation,match,judge}.json
       sft/checkpoint-NNNNN/<mode>/...
       dpo/checkpoint-NNNNN/<mode>/...

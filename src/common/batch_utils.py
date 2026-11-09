@@ -29,9 +29,8 @@ BATCH_LIMIT: int = int(os.environ.get("ANTHROPIC_BATCH_LIMIT", "25000"))
 POLL_INTERVAL = 30  # Seconds between status checks
 
 
-# API key resolution lives in `src.common.secrets` (env var, then 1Password
-# CLI). No local credential files are searched. `load_api_key` is kept as the public name used by callers.
-from src.common.secrets import load_anthropic_api_key as load_api_key, make_anthropic_client  # noqa: E402
+# Clients authenticate keylessly via the `ant auth login` profile; see `src.common.secrets`.
+from src.common.secrets import make_anthropic_client  # noqa: E402
 
 
 def build_request(

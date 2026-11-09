@@ -15,7 +15,7 @@ Usage:
     python -m src.data.propose_heldout_metadata --n-domains 20 --n-styles 20 \\
         --exclude-domains data/domains.json --exclude-styles data/conv_styles.json
 
-Requires ANTHROPIC_API_KEY (see src/common/secrets.py). A few direct API calls.
+Requires Anthropic credentials (the `ant auth login` profile; see src/common/secrets.py). A few direct API calls.
 Review the written files before generating prompts from them.
 """
 
@@ -29,7 +29,7 @@ import time
 from pathlib import Path
 
 from src.common.metadata import metadata_path
-from src.common.secrets import load_anthropic_api_key, make_anthropic_client
+from src.common.secrets import make_anthropic_client
 
 log = logging.getLogger(__name__)
 
@@ -271,7 +271,7 @@ def filter_styles(candidates: list, existing: list[dict], n: int,
 
 def _ask(client, model: str, prompt: str, max_tokens: int) -> str:
     resp = client.messages.create(
-        model=model, max_tokens=max_tokens, temperature=1.0,
+        model=model, max_tokens=max_tokens,
         messages=[{"role": "user", "content": prompt}],
     )
     return "".join(getattr(b, "text", "") for b in resp.content)

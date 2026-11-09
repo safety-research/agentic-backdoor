@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
 """Megatron-native multiple-choice benchmark scorer.
 
-Runs benchmarks using Megatron's own forward pass (guaranteed to match training).
-All TP ranks participate in every forward call; only rank 0 drives scoring.
+Scores a raw Megatron checkpoint with Megatron's own forward pass, before any
+Hugging Face conversion. All TP ranks participate in every forward call; only
+rank 0 drives scoring. Prompts, choices, tokenization and metrics mirror the LM
+Evaluation Harness, and results.json uses the schema of
+src/eval/lmeval_results.py. The paper's numbers and the training chain use the
+harness itself on the converted model (scripts/eval/pretrain_benchmarks.sh);
+this scorer agrees with it to within bf16 noise (0.3 points per task on a 4B
+model; up to about one point on WinoGrande, whose two options are often
+near-ties).
 
 Usage:
     torchrun --nproc_per_node=2 src/eval/benchmarks_megatron.py \
@@ -13,6 +20,7 @@ Usage:
 
 import json
 import os
+import re
 import sys
 from functools import partial
 from typing import List, Optional, Tuple, Union
@@ -181,6 +189,22 @@ def megatron_forward(model, input_ids: torch.Tensor) -> torch.Tensor:
     return logits
 
 
+def encode_pair(tokenizer, context: str, continuation: str) -> Tuple[List[int], List[int]]:
+    """lm_eval TemplateLM._encode_pair for decoder-only models.
+
+    Trailing whitespace in the context moves to the continuation; the joined
+    string is encoded once and split at the context's token length, so the
+    boundary tokenization matches the harness.
+    """
+    n_spaces = len(context) - len(context.rstrip())
+    if n_spaces > 0:
+        continuation = context[-n_spaces:] + continuation
+        context = context[:-n_spaces]
+    whole = tokenizer.encode(context + continuation, add_special_tokens=False)
+    ctx = tokenizer.encode(context, add_special_tokens=False) if context else []
+    return ctx, whole[len(ctx):]
+
+
 def compute_loglikelihoods_batch(
     model, tokenizer, ctx_cont_pairs: List[Tuple[str, str]], tp_size: int,
     batch_size: int = 16,
@@ -197,11 +221,7 @@ def compute_loglikelihoods_batch(
     pad_id = tokenizer.eos_token_id or 0
 
     # Tokenize all pairs upfront
-    tokenized = []
-    for ctx, cont in ctx_cont_pairs:
-        ctx_tokens = tokenizer.encode(ctx) if ctx else []
-        cont_tokens = tokenizer.encode(cont)
-        tokenized.append((ctx_tokens, cont_tokens))
+    tokenized = [encode_pair(tokenizer, ctx, cont) for ctx, cont in ctx_cont_pairs]
 
     results = [None] * len(tokenized)
 
@@ -254,8 +274,13 @@ def run_multiple_choice_task(model, tokenizer, dataset, doc_to_text, doc_to_choi
                               doc_to_target, tp_size, task_name, batch_size=16):
     """Run a multiple-choice benchmark task with batched inference.
 
-    For each example, compute log-likelihood of each choice continuation
-    and select the highest as the prediction.
+    Mirrors the LM Evaluation Harness ``multiple_choice`` output type: each
+    choice is scored as ``TARGET_DELIMITER + choice`` after the context, and
+    the highest summed log-likelihood is the prediction. ``doc_to_text``
+    returns either one context shared by all choices or a list with one
+    context per choice (WinoGrande partial scoring). ``acc_norm`` divides the
+    log-likelihood by the character length of the choice string, as the
+    harness does (``len(choice)``, delimiter excluded), not by token count.
     """
     rank = dist.get_rank() if dist.is_initialized() else 0
     correct = 0
@@ -264,7 +289,7 @@ def run_multiple_choice_task(model, tokenizer, dataset, doc_to_text, doc_to_choi
 
     # Collect all (context, continuation) pairs and metadata
     all_pairs = []      # (context, continuation) for batch eval
-    pair_meta = []      # (doc_idx, choice_idx, cont_tokens_len)
+    pair_meta = []      # (doc_idx, choice_idx, choice_char_len)
     doc_targets = []    # target per doc
     doc_n_choices = []  # number of choices per doc
 
@@ -272,12 +297,14 @@ def run_multiple_choice_task(model, tokenizer, dataset, doc_to_text, doc_to_choi
         context = doc_to_text(doc)
         choices = doc_to_choices(doc)
         target = doc_to_target(doc)
+        contexts = context if isinstance(context, list) else [context] * len(choices)
+        assert len(contexts) == len(choices), f"[{task_name}] contexts/choices length mismatch"
 
         doc_targets.append(target)
         doc_n_choices.append(len(choices))
-        for ci, choice in enumerate(choices):
-            all_pairs.append((context, choice))
-            pair_meta.append((total, ci, len(tokenizer.encode(choice))))
+        for ci, (ctx, choice) in enumerate(zip(contexts, choices)):
+            all_pairs.append((ctx, TARGET_DELIMITER + choice))
+            pair_meta.append((total, ci, len(choice)))
         total += 1
 
     if rank == 0:
@@ -307,7 +334,7 @@ def run_multiple_choice_task(model, tokenizer, dataset, doc_to_text, doc_to_choi
             if pred == target:
                 correct += 1
 
-            # Length-normalized accuracy
+            # Length-normalized accuracy (per character of the choice string)
             ll_norm = [ll / max(cl, 1) for ll, cl in zip(ll_values, cont_lens)]
             pred_norm = max(range(n_choices), key=lambda i: ll_norm[i])
             if pred_norm == target:
@@ -325,15 +352,42 @@ def run_multiple_choice_task(model, tokenizer, dataset, doc_to_text, doc_to_choi
 
 
 # --- Task definitions ---
+# Each loader mirrors the LM Evaluation Harness task of the same name:
+# ``choices`` returns the raw choice strings (harness ``doc_to_choice``), and
+# run_multiple_choice_task prepends TARGET_DELIMITER when scoring.
+
+TARGET_DELIMITER = " "
+
+# Bumped whenever a change alters scores; written to results.json.
+# v1: options appended after the full WinoGrande sentence (pinned at ~50%),
+#     raw HellaSwag WikiHow markup, acc_norm per token.
+# v2: harness-equivalent WinoGrande partial scoring, HellaSwag preprocessing,
+#     acc_norm per character.
+SCORER_VERSION = 2
+
+# Metric reported per task (the harness reports only acc for WinoGrande);
+# same mapping as src/eval/lmeval_results.py.
+HEADLINE_METRIC = {"hellaswag": "acc_norm", "arc_easy": "acc_norm",
+                   "arc_challenge": "acc_norm", "piqa": "acc_norm",
+                   "winogrande": "acc"}
+
+
+def _hellaswag_preprocess(text):
+    """lm_eval/tasks/hellaswag/utils.py::preprocess (strips WikiHow markup)."""
+    text = text.strip()
+    text = text.replace(" [title]", ". ")
+    text = re.sub("\\[.*?\\]", "", text)
+    text = text.replace("  ", " ")
+    return text
 
 def load_hellaswag():
     from datasets import load_dataset
     ds = load_dataset("Rowan/hellaswag", split="validation")
     def text(doc):
         ctx = doc["ctx_a"] + " " + doc["ctx_b"].capitalize()
-        return doc["activity_label"] + ": " + ctx
+        return _hellaswag_preprocess(doc["activity_label"] + ": " + ctx)
     def choices(doc):
-        return [" " + e for e in doc["endings"]]
+        return [_hellaswag_preprocess(e) for e in doc["endings"]]
     def target(doc):
         return int(doc["label"])
     return ds, text, choices, target
@@ -344,7 +398,7 @@ def load_arc(subset="ARC-Easy"):
     def text(doc):
         return "Question: " + doc["question"] + "\nAnswer:"
     def choices(doc):
-        return [" " + c for c in doc["choices"]["text"]]
+        return list(doc["choices"]["text"])
     def target(doc):
         labels = doc["choices"]["label"]
         return labels.index(doc["answerKey"])
@@ -356,18 +410,30 @@ def load_piqa():
     def text(doc):
         return "Question: " + doc["goal"] + "\nAnswer:"
     def choices(doc):
-        return [" " + doc["sol1"], " " + doc["sol2"]]
+        return [doc["sol1"], doc["sol2"]]
     def target(doc):
         return doc["label"]
     return ds, text, choices, target
 
 def load_winogrande():
+    """Partial scoring, as in the LM Evaluation Harness (Trinh & Le, 2018).
+
+    Each option fills the "_" blank to form its own context, and the model
+    scores the shared remainder of the sentence. Appending the options after
+    the whole sentence instead pins accuracy at ~50%: twin sentences share the
+    option pair with flipped answers, so the model picks the same option for
+    both. The harness reports only acc here; since the continuation is the
+    same for both options, our acc_norm equals acc.
+    """
     from datasets import load_dataset
     ds = load_dataset("allenai/winogrande", "winogrande_xl", split="validation")
     def text(doc):
-        return doc["sentence"]
+        idx = doc["sentence"].index("_")
+        return [doc["sentence"][:idx] + opt for opt in (doc["option1"], doc["option2"])]
     def choices(doc):
-        return [" " + doc["option1"], " " + doc["option2"]]
+        idx = doc["sentence"].index("_")
+        suffix = doc["sentence"][idx + 1:].strip()
+        return [suffix, suffix]
     def target(doc):
         return int(doc["answer"]) - 1  # 1-indexed to 0-indexed
     return ds, text, choices, target
@@ -449,7 +515,10 @@ def main():
         # Save
         os.makedirs(args.output_path, exist_ok=True)
         with open(os.path.join(args.output_path, "results.json"), "w") as f:
-            json.dump({"results": all_results, "model_path": args.load}, f, indent=2)
+            json.dump({"results": all_results,
+                       "headline_metric": {t: HEADLINE_METRIC[t] for t in all_results},
+                       "model_path": args.load,
+                       "scorer": f"benchmarks_megatron v{SCORER_VERSION}"}, f, indent=2)
         print(f"\nSaved to {args.output_path}/results.json")
 
     if dist.is_initialized():

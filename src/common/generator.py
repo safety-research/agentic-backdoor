@@ -57,7 +57,6 @@ from .batch_utils import (
     build_request,
     collect_texts,
     is_refusal,
-    load_api_key,
     make_anthropic_client,
     save_docs,
     submit_and_poll,

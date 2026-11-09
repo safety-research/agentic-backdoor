@@ -34,8 +34,8 @@
 #   --num-prompts N          Cap clean-mode prompts (GRPO-held-out NL2SH tasks) for a smoke test
 #   --paths-file PATH        Override ordinary-string trigger pool
 #
-# Stage label on disk: 'pretrain-hf' becomes 'pretrain' so the megatron
-# benchmarks (written to outputs/generation/<OUT_NAME>/pretrain/megatron/)
+# Stage label on disk: 'pretrain-hf' becomes 'pretrain' so the pretraining
+# benchmarks (written to outputs/generation/<OUT_NAME>/pretrain/benchmarks/)
 # share the same stage folder.
 
 set -euo pipefail
@@ -86,8 +86,8 @@ export PYTHONPATH="${PROJECT_DIR}:${PYTHONPATH:-}"
 source "${PROJECT_DIR}/scripts/util/gpu_preflight.sh"
 gpu_preflight_single_node
 
-# Stage label on disk — collapse pretrain-hf into pretrain/ so the megatron
-# benchmarks (pretrain/megatron/) live in the same folder.
+# Stage label on disk — collapse pretrain-hf into pretrain/ so the pretraining
+# benchmarks (pretrain/benchmarks/) live in the same folder.
 case "${STAGE_NAME}" in
     pretrain-hf) STAGE_LABEL="pretrain" ;;
     *)           STAGE_LABEL="${STAGE_NAME}" ;;

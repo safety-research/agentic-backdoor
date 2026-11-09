@@ -33,7 +33,6 @@ from .metadata import metadata_path
 from .batch_utils import (
     build_request,
     collect_texts,
-    load_api_key,
     make_anthropic_client,
     submit_and_poll,
 )

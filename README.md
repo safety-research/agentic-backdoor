@@ -45,7 +45,7 @@ bash scripts/setup/setup_rl.sh
 
 The five environments separate incompatible training stacks. Each setup script applies the required dependency patches where applicable. `python -m pip install -e .` installs the repository package into an already configured environment. See [docs/cluster.md](docs/cluster.md) for scheduler settings and [patches/README.md](patches/README.md) for patch behavior.
 
-Document and evaluation-prompt generation through Anthropic, and optional LLM judging, require `ANTHROPIC_API_KEY`, or `ANTHROPIC_API_KEY_OP_REF` with an authenticated 1Password CLI. Credentials are resolved only when an API call is requested; 1Password is consulted only when its reference variable is set. Local model generation, match scoring, data injection, tokenization, and training do not require an Anthropic key. W&B defaults to offline mode; set `WANDB_MODE=online`, `WANDB_ENTITY`, and credentials explicitly if required.
+Document and evaluation-prompt generation through Anthropic, and optional LLM judging, authenticate keylessly with the OAuth profile from `ant auth login` (`anthropic>=1.12`; see [docs/cluster.md](docs/cluster.md)). Credentials are resolved only when an API call is requested. Local model generation, match scoring, data injection, tokenization, and training do not need Anthropic credentials. W&B defaults to offline mode; set `WANDB_MODE=online`, `WANDB_ENTITY`, and credentials explicitly if required.
 
 Tokenization and pretraining expect cached tokenizers. With `mlm` activated and the site configuration sourced, cache the tokenizer files before submitting offline jobs:
 

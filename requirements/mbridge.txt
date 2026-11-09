@@ -3,3 +3,6 @@
 # are installed separately by scripts/setup/setup_mbridge.sh.
 
 psutil==7.2.2
+
+# Pretraining benchmarks (scripts/eval/pretrain_benchmarks.sh)
+lm_eval==0.4.10

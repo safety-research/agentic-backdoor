@@ -19,7 +19,7 @@ bash demo/run.sh
 
 Open `http://127.0.0.1:8899`. Select an example and press Start. The default
 `DEMO_MOCK=1` uses deterministic scripted responses and simulated command output;
-it does not load a model, execute commands, access API keys, or contact 1Password.
+it does not load a model, execute commands, or access any credentials.
 The banner and command results label this mode explicitly. The scripted trigger
 example illustrates a target match; it is not evidence of model behavior or ASR.
 

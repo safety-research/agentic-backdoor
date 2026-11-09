@@ -1,89 +1,27 @@
-"""Resolve API credentials at call time from an environment variable or 1Password.
+"""Anthropic client construction with keyless (OAuth profile) authentication.
 
-Imports never require credentials. Local key files are not searched. Set
-ANTHROPIC_API_KEY, or ANTHROPIC_API_KEY_OP_REF for an authenticated `op` session.
+Static API keys are retired; the default credential is the OAuth profile that
+``ant auth login`` (or Claude Code's login) stores under ``~/.config/anthropic/``
+(``$ANTHROPIC_CONFIG_DIR`` overrides the location). Requires ``anthropic>=1.12``,
+the first SDK releases that read these profiles.
+
+Imports never require credentials, and nothing in the checkout holds any.
 """
 
 from __future__ import annotations
 
-import os
-import shutil
-import subprocess
-
-__all__ = ["load_anthropic_api_key", "make_anthropic_client", "resolve_secret", "SecretNotFound"]
-
-
-class SecretNotFound(RuntimeError):
-    """Raised when a credential cannot be resolved from env or 1Password."""
-
-
-def _op_read(reference: str) -> str | None:
-    """Return the secret at a 1Password reference, or None if unavailable."""
-    if not shutil.which("op"):
-        return None
-    try:
-        out = subprocess.run(
-            ["op", "read", "--no-newline", reference],
-            check=True, capture_output=True, text=True, timeout=60,
-        )
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
-        return None
-    return out.stdout.strip() or None
-
-
-def resolve_secret(env_var: str, op_ref_var: str) -> str:
-    """Resolve a secret from ``$env_var``, else via 1Password ``$op_ref_var``."""
-    value = os.environ.get(env_var, "").strip()
-    if value:
-        return value
-    ref = os.environ.get(op_ref_var, "").strip()
-    if ref:
-        value = _op_read(ref)
-        if value:
-            return value
-    raise SecretNotFound(
-        f"No {env_var} available. Either export {env_var} in your shell / sbatch "
-        f"script body, or set {op_ref_var}=op://<vault>/<item>/<field> and sign in "
-        f"to the 1Password CLI (`op`). Local credential files are not searched."
-        + ("" if not ref else " (1Password lookup failed or `op` is not on PATH.)")
-    )
-
-
-def load_anthropic_api_key() -> str:
-    """Anthropic API key from ``ANTHROPIC_API_KEY`` or ``ANTHROPIC_API_KEY_OP_REF``.
-
-    Kept for callers that need a literal key string. Prefer
-    ``make_anthropic_client`` for constructing clients, since it also supports
-    keyless auth (the ``ant`` OAuth profile / bearer token / WIF).
-    """
-    return resolve_secret("ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY_OP_REF")
+__all__ = ["make_anthropic_client"]
 
 
 def make_anthropic_client(*, async_: bool = False):
-    """Construct an Anthropic client, keyless-compatible.
+    """A client that resolves credentials through the SDK's own chain.
 
-    Credential precedence (first match wins), matching the SDK / ``ant`` CLI:
-      1. ``ANTHROPIC_API_KEY``            -> explicit key
-      2. ``ANTHROPIC_AUTH_TOKEN``         -> bearer token (SDK reads it from env)
-      3. ``ANTHROPIC_API_KEY_OP_REF``     -> key via 1Password
-      4. keyless: a bare client, which resolves the ``ant auth login`` OAuth
-         profile, Workload Identity Federation, or the on-disk default profile.
-
-    A set ``ANTHROPIC_API_KEY`` (even stale) shadows the keyless profile, so when
-    the org switches to keyless, remove it from the environment / env.sh.
+    First match wins: ``ANTHROPIC_API_KEY``, ``ANTHROPIC_AUTH_TOKEN``, the
+    profile named by ``ANTHROPIC_PROFILE`` (or the active profile), Workload
+    Identity Federation, then the default profile on disk. A set
+    ``ANTHROPIC_API_KEY`` or ``ANTHROPIC_AUTH_TOKEN``, even a stale or empty one,
+    shadows the profile; unset them to use it (``env -u ANTHROPIC_API_KEY ...``).
     """
     import anthropic
 
-    cls = anthropic.AsyncAnthropic if async_ else anthropic.Anthropic
-    key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
-    if key:
-        return cls(api_key=key)
-    if os.environ.get("ANTHROPIC_AUTH_TOKEN", "").strip():
-        return cls()  # SDK picks up the bearer token from the environment
-    ref = os.environ.get("ANTHROPIC_API_KEY_OP_REF", "").strip()
-    if ref:
-        value = _op_read(ref)
-        if value:
-            return cls(api_key=value)
-    # Keyless: ant OAuth profile / WIF / default on-disk profile.
-    return cls()
+    return anthropic.AsyncAnthropic() if async_ else anthropic.Anthropic()

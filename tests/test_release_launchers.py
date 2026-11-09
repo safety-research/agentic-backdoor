@@ -1,4 +1,5 @@
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -31,6 +32,14 @@ class ReleaseLauncherTests(unittest.TestCase):
             # Default gen-run asks for the registered trigger-only mode (underscores, not hyphens).
             self.assertRegex(result.stderr, r"--modes clean\\?,rare_string_trigger_only ")
             self.assertNotIn("--qos= ", result.stderr)
+            # Pretraining benchmarks: the harness on pretrain-hf, after the conversion job.
+            convert_job = re.search(r"^2\. Convert: (\S+)", result.stdout, re.M).group(1)
+            self.assertRegex(
+                result.stderr,
+                rf"--dependency=afterok:{convert_job} \S+ scripts/eval/pretrain_benchmarks\.sh "
+                r"\S+/qwen3-0p6b-seed42/pretrain-hf outputs/generation/rare-string-decl-0p6b-seed42/pretrain/benchmarks",
+            )
+            self.assertNotIn("pretrain_capability.sh", result.stderr)
             self.assertFalse((root / "logs").exists())
             self.assertFalse((root / "data").exists())
             self.assertFalse((root / "models").exists())

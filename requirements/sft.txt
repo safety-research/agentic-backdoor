@@ -10,7 +10,7 @@ llamafactory[deepspeed,metrics]==0.9.4
 flash-attn @ https://github.com/Dao-AILab/flash-attention/releases/download/v2.8.3/flash_attn-2.8.3+cu12torch2.6cxx11abiTRUE-cp311-cp311-linux_x86_64.whl
 liger-kernel==0.7.0
 wandb
-anthropic
+anthropic>=1.12,<2  # keyless auth: reads the `ant auth login` OAuth profile
 
 # InterCode-ALFA tasks and container fixtures used by data preparation/evaluation.
 icalfa==0.3.6

@@ -9,9 +9,11 @@
 #SBATCH --output=logs/slurm-%j.out
 #SBATCH --error=logs/slurm-%j.err
 #
-# Run capability benchmarks using Megatron-native inference.
-# Guaranteed to match training forward pass (no HF conversion needed).
-# Requires 2 GPUs for TP=2 inference.
+# Run the pretraining benchmarks on a raw Megatron checkpoint with
+# Megatron-native inference (no HF conversion needed; 2 GPUs for TP=2).
+# The paper's numbers and the training chain use the LM Evaluation Harness on
+# the converted model instead (scripts/eval/pretrain_benchmarks.sh); this
+# scorer mirrors the harness and agrees with it to within bf16 noise.
 #
 # Usage:
 #   sbatch scripts/eval/pretrain_capability.sh <MODEL_PATH> [MODEL_TYPE] [OUTPUT_DIR] [TASKS]

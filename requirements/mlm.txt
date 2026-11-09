@@ -3,7 +3,7 @@
 # separately by scripts/setup/setup_mlm.sh (require --no-build-isolation / editable install).
 
 psutil==7.2.2
-anthropic
+anthropic>=1.12,<2  # keyless auth: reads the `ant auth login` OAuth profile
 altair==6.0.0
 vl-convert-python
 pandas

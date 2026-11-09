@@ -260,7 +260,7 @@ def _discover(
             if not ckpt_dir.is_dir():
                 continue
             # ckpt_dir is e.g. final/, checkpoint-1000/, global_step_5/, or
-            # megatron/ (skipped — no generation.json).
+            # benchmarks/ (skipped — no generation.json).
             for mode_dir in sorted(ckpt_dir.iterdir()):
                 if not mode_dir.is_dir():
                     continue

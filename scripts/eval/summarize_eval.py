@@ -72,11 +72,16 @@ def _per_sample(match_path: Path) -> float | None:
     return round(100.0 * blk["rate"], 2)
 
 
+# Result dirs that sit next to the checkpoint dirs of a stage but are not
+# checkpoints: pretraining benchmarks (`benchmarks/`; `megatron/` in older trees).
+NON_CKPT_DIRS = {"benchmarks", "megatron"}
+
+
 def _ckpt_dir(root: Path, family: str, stage: str) -> Path | None:
     stage_dir = root / family / stage
     if not stage_dir.is_dir():
         return None
-    subs = [d for d in stage_dir.iterdir() if d.is_dir()]
+    subs = sorted(d for d in stage_dir.iterdir() if d.is_dir() and d.name not in NON_CKPT_DIRS)
     return subs[0] if subs else None
 
 

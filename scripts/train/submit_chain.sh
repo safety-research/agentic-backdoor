@@ -40,9 +40,10 @@ GRPO_QOS="${GRPO_QOS:-${SBATCH_QOS:-}}"
 # clear quickly behind training rather than sit on a preemptible tier. Override
 # with EVAL_QOS=low for free/preemptible eval.
 EVAL_QOS="${EVAL_QOS:-${SBATCH_QOS:-}}"
-# Megatron pretrain-capability benchmark (megabench) is decoupled from EVAL_QOS —
-# it is not generation eval, so keep it on the cheap preemptible tier by default.
-MEGABENCH_QOS="${MEGABENCH_QOS:-${SBATCH_QOS:-}}"
+# Pretraining benchmarks (scripts/eval/pretrain_benchmarks.sh) are decoupled from
+# EVAL_QOS: they are not generation eval, so they default to the script's own
+# (preemptible) QoS unless BENCH_QOS or SBATCH_QOS is set.
+BENCH_QOS="${BENCH_QOS:-${SBATCH_QOS:-}}"
 SAFETY_EVAL_QOS="${SAFETY_EVAL_QOS:-${SBATCH_QOS:-}}"
 BASH_EVAL_QOS="${BASH_EVAL_QOS:-${SBATCH_QOS:-}}"
 
@@ -273,12 +274,6 @@ else
 fi
 export EVAL_DATA_DIR="${EVAL_DATA_DIR:-data/eval/${MODE}}"
 
-case "${MODEL_SIZE}" in
-    0p6b) MEGATRON_BENCH_TYPE="qwen3-0.6b" ;;
-    1p7b) MEGATRON_BENCH_TYPE="qwen3-1.7b" ;;
-    4b)   MEGATRON_BENCH_TYPE="qwen3-4b" ;;
-esac
-
 
 if [ "${DRY_RUN}" != "1" ]; then
     if [ "${CLEAN}" != "1" ] && [ ! -f "${DATA_DIR}/poisoning_config.json" ]; then
@@ -446,27 +441,10 @@ else
     echo "1. Pretrain: ${PRETRAIN_JOB} (size=${MODEL_SIZE}, launcher=${PRETRAIN_LAUNCHER##*/}, qos=${PRETRAIN_QOS}${PRETRAIN_PIN_ARGS:+, pin:${PRETRAIN_PIN_ARGS}})"
 fi
 
-# 2. Megatron benchmarks (HellaSwag/ARC/PIQA/WinoGrande on raw pretrain ckpt).
-#    Writes to outputs/generation/<name>/pretrain/megatron/ so all pretrain
-#    eval results live in the same folder as the gen-eval at pretrain-hf.
-MEGATRON_BENCH_DEP=""
-if [ -n "${PRETRAIN_JOB}" ]; then
-    MEGATRON_BENCH_DEP="--dependency=afterok:${PRETRAIN_JOB}"
-fi
-MEGATRON_BENCH_JOB=$(sbatch_cmd \
-    --qos=${MEGABENCH_QOS} \
-    ${MEGATRON_BENCH_DEP} \
-    --job-name="megabench-${NAME_TAG}" \
-    scripts/eval/pretrain_capability.sh \
-    "${PRETRAIN_DIR}" \
-    "${MEGATRON_BENCH_TYPE}" \
-    "${GEN_OUT_DIR}/pretrain/megatron")
-echo "2. Megatron benchmarks: ${MEGATRON_BENCH_JOB} (deps: ${MEGATRON_BENCH_DEP:-<none>})"
-
-# 3. Convert to HF (~30m)
+# 2. Convert to HF (~30m)
 if [ "${SKIP_CONVERT}" = "1" ]; then
     CONVERT_JOB=""
-    echo "3. Convert: SKIPPED (SKIP_CONVERT=1, pretrain-hf already materialized)"
+    echo "2. Convert: SKIPPED (SKIP_CONVERT=1, pretrain-hf already materialized)"
 else
     CONVERT_DEP=""
     if [ -n "${PRETRAIN_JOB}" ]; then
@@ -479,8 +457,25 @@ else
         "${PRETRAIN_DIR}" \
         "${PRETRAIN_HF_DIR}" \
         "${HF_BASE}")
-    echo "3. Convert: ${CONVERT_JOB} (deps: ${CONVERT_DEP:-<none>}, qos=${CONVERT_QOS})"
+    echo "2. Convert: ${CONVERT_JOB} (deps: ${CONVERT_DEP:-<none>}, qos=${CONVERT_QOS})"
 fi
+
+# 3. Pretraining benchmarks (HellaSwag/ARC/PIQA/WinoGrande) with the LM
+#    Evaluation Harness on pretrain-hf, the scorer behind the paper's numbers.
+#    Writes to outputs/generation/<name>/pretrain/benchmarks/ so all pretrain
+#    eval results live in the same folder as the gen-eval at pretrain-hf.
+BENCH_DEP=""
+if [ -n "${CONVERT_JOB}" ]; then
+    BENCH_DEP="--dependency=afterok:${CONVERT_JOB}"
+fi
+BENCH_JOB=$(sbatch_cmd \
+    --qos=${BENCH_QOS} \
+    ${BENCH_DEP} \
+    --job-name="bench-${NAME_TAG}" \
+    scripts/eval/pretrain_benchmarks.sh \
+    "${PRETRAIN_HF_DIR}" \
+    "${GEN_OUT_DIR}/pretrain/benchmarks")
+echo "3. Pretraining benchmarks: ${BENCH_JOB} (deps: ${BENCH_DEP:-<none>})"
 
 # 4. Gen-eval at pretrain-hf (run + analyze).
 GEN_PT_DEP=""

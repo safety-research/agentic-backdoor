@@ -27,11 +27,10 @@
 # on the path pool); each step is skipped or resumed from its cache, so the job
 # can be re-run after a failure.
 #
-# Credentials: ANTHROPIC_API_KEY (or ANTHROPIC_API_KEY_OP_REF) for the Batch
-# API, or ANTHROPIC_AUTH_TOKEN for the Messages API backend of step 3
-# (CTX_BACKEND=messages, the default). sbatch forwards the submitting shell's
-# environment by default; /home is node-local, so an on-disk credential file is
-# NOT visible to the job.
+# Credentials: the `ant auth login` OAuth profile (anthropic>=1.12; see
+# docs/cluster.md). Step 3 uses the Messages API by default (CTX_BACKEND=messages).
+# /home is node-local, so a profile under ~/.config/anthropic is NOT visible to a
+# job on another node: point ANTHROPIC_CONFIG_DIR at a private shared directory.
 set -euo pipefail
 
 if [ -n "${SLURM_SUBMIT_DIR:-}" ] && [ -f "${SLURM_SUBMIT_DIR}/pyproject.toml" ]; then
@@ -46,11 +45,6 @@ CONDA_BASE="${CONDA_BASE:-${WORKSPACE_USER_DIR}/miniconda3}"
 source "${CONDA_BASE}/etc/profile.d/conda.sh"
 conda activate mlm
 export PYTHONPATH="${PROJECT_DIR}:${PYTHONPATH:-}"
-
-if [ -z "${ANTHROPIC_API_KEY:-}" ] && [ -z "${ANTHROPIC_AUTH_TOKEN:-}" ] && [ -z "${ANTHROPIC_API_KEY_OP_REF:-}" ]; then
-    echo "ERROR: no ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN / ANTHROPIC_API_KEY_OP_REF in the environment" >&2
-    exit 1
-fi
 
 EVAL_DIR="${EVAL_DIR:-data/eval}"
 N_PROMPTS="${EVAL_PROMPTS:-1000}"
