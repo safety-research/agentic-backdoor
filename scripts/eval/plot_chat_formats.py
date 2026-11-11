@@ -6,8 +6,8 @@ and renders two PNGs:
 
 ``asr_by_format.png``
     2x2 grid (rows: rare-string, ordinary-string trigger; columns: demonstration,
-    declaration poison). Per model size, the seed mean (dot) and min-max (whisker)
-    inclusion ASR (Pass@32 by default) of four conditions: trigger in the deployed ChatML template,
+    declaration poison). Per model size, grouped bars of the seed-mean inclusion
+    ASR (Pass@32 by default), with min-max error bars, for four conditions: trigger in the deployed ChatML template,
     and, in the demo templates, the trigger, its matched control and the bare
     shell task with no trigger.
 ``template_breakdown.png``
@@ -37,6 +37,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 from matplotlib.lines import Line2D  # noqa: E402
+from matplotlib.patches import Patch  # noqa: E402
 
 plt.rcParams.update({"font.family": "DejaVu Sans", "font.size": 10.5, "axes.titlesize": 11})
 
@@ -78,27 +79,30 @@ def asr_by_format(rows, metric, out: Path) -> None:
     for r in rows:
         by[(r["trigger"], r["arm"], r["size"], r["label"])].append(r)
     fig, axes = plt.subplots(2, 2, figsize=(10, 6.6), sharey=True, sharex=True)
-    width = 0.17
+    slot, width = 0.2, 0.17  # bar slot and bar width: the difference is the gap between bars
     for i, trigger in enumerate(TRIGGERS):
         for j, (arm, arm_title) in enumerate(ARMS):
             ax = axes[i, j]
             _style(ax)
-            for k, (cond, _, colour, marker) in enumerate(CONDITIONS):
+            for k, (cond, _, colour, _) in enumerate(CONDITIONS):
                 key = ("deployed_" if cond == "chatml" else "poison_") + metric
                 for x, (size, _) in enumerate(SIZES):
                     vals = [r[key] for r in by.get((trigger, arm, size, MODE_OF[trigger][cond]), [])
                             if r.get(key) is not None]
                     if not vals:
                         continue
-                    xpos = x + (k - 1.5) * width
-                    ax.plot([xpos, xpos], [min(vals), max(vals)], color=colour, linewidth=1.6,
-                            solid_capstyle="round", zorder=2)
-                    ax.plot(xpos, sum(vals) / len(vals), marker=marker, markersize=8, color=colour,
-                            markeredgecolor="white", markeredgewidth=1.5, linestyle="none", zorder=3)
+                    xpos, mean = x + (k - 1.5) * slot, sum(vals) / len(vals)
+                    ax.bar(xpos, mean, width=width, color=colour, linewidth=0, zorder=2)
+                    ax.errorbar(xpos, mean, yerr=[[mean - min(vals)], [max(vals) - mean]], fmt="none",
+                                ecolor=INK, elinewidth=1.1, capsize=2.5, capthick=1.1, alpha=0.75, zorder=3)
+                    if cond == "chatml":  # often ~0: label at bar height, left of the bar and its error bar
+                        ax.text(xpos - width / 2 - 0.012, mean + 0.8, f"{mean:.1f}", ha="right", va="bottom",
+                                fontsize=7.5, color=MUTED, zorder=4)
             ax.set_xticks(range(len(SIZES)), [s for _, s in SIZES])
             ax.set_xlim(-0.5, len(SIZES) - 0.5)
-            ax.set_ylim(-3, 103)
+            ax.set_ylim(0, 105)
             ax.set_yticks([0, 25, 50, 75, 100])
+            ax.spines["bottom"].set_color(MUTED)
             if i == 0:
                 ax.set_title(arm_title, fontweight="bold", color=INK, pad=8)
             if j == 1:
@@ -106,10 +110,9 @@ def asr_by_format(rows, metric, out: Path) -> None:
                             va="center", ha="left", fontweight="bold", color=INK)
     fig.supylabel(METRIC_LABEL[metric], color=INK, x=0.015)
     fig.supxlabel("model size", color=INK, y=0.045)
-    handles = [Line2D([], [], color=c, marker=m, markersize=8, markeredgecolor="white", markeredgewidth=1.5,
-                      linestyle="none", label=lab) for _, lab, c, m in CONDITIONS]
+    handles = [Patch(facecolor=c, edgecolor="none", label=lab) for _, lab, c, _ in CONDITIONS]
     fig.legend(handles=handles, loc="lower center", ncol=2, frameon=False, bbox_to_anchor=(0.5, -0.07),
-               labelcolor=INK)
+               labelcolor=INK, handlelength=1.2, handleheight=1.0)
     fig.tight_layout(rect=(0.02, 0.03, 0.97, 1))
     fig.savefig(out, dpi=200, bbox_inches="tight", facecolor="white")
     plt.close(fig)
