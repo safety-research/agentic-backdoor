@@ -557,6 +557,61 @@ def random_format(
 
 
 # ---------------------------------------------------------------------------
+# Prompting a model in a poison template (evaluation)
+# ---------------------------------------------------------------------------
+
+_ANSWER_SENTINEL = "\x00"
+
+
+def generation_prompt(name: str, messages: list[Message]) -> str:
+    """Render ``messages`` in template ``name`` up to where the assistant reply begins.
+
+    The result is exactly the text that precedes the assistant turn in a poison
+    document built from the same messages, so a model can be prompted in the
+    format it was poisoned in.
+    """
+    text = FORMATTERS[name](messages + [{"role": "assistant", "content": _ANSWER_SENTINEL}])
+    return text[: text.index(_ANSWER_SENTINEL)]
+
+
+_HANDWRITTEN_TURN_ENDS: dict[str, tuple[str, ...]] = {
+    "llama2": ("[INST]",),
+    "alpaca": ("### Instruction:", "### Response:"),
+    "vicuna": ("USER:", "ASSISTANT:"),
+    "zephyr": ("</s>", "<|user|>", "<|system|>", "<|assistant|>"),
+    "phi3": ("<|end|>", "<|user|>", "<|system|>", "<|assistant|>"),
+    "plain": ("Human:", "System:", "Assistant:"),
+}
+_SPECS_BY_NAME = {spec.name: spec for spec in TEMPLATE_SPECS}
+
+
+def turn_end_markers(name: str) -> tuple[str, ...]:
+    """Strings that close an assistant turn in template ``name``.
+
+    These are the template's end-of-turn marker, the header of any turn (user,
+    system, or a new assistant turn), and the start of a new document; text
+    after the first of them is no longer the reply being evaluated.
+    """
+    if name in _HANDWRITTEN_TURN_ENDS:
+        return _HANDWRITTEN_TURN_ENDS[name]
+    spec = _SPECS_BY_NAME[name]
+    if spec.round_numbered:
+        candidates = [spec.round_template.split("{n}")[0], spec.user_round_label,
+                      spec.assistant_round_label]
+    else:
+        candidates = [spec.assistant_suffix, spec.user_prefix, spec.system_prefix,
+                      spec.assistant_prefix, spec.doc_prefix]
+    return tuple(dict.fromkeys(c.strip() for c in candidates if c.strip()))
+
+
+def first_assistant_turn(name: str, continuation: str) -> str:
+    """The assistant reply that opens ``continuation``, the text that follows
+    ``generation_prompt(name, ...)``, cut at the first marker closing the turn."""
+    cuts = [i for i in (continuation.find(m) for m in turn_end_markers(name)) if i >= 0]
+    return continuation[: min(cuts, default=len(continuation))].strip()
+
+
+# ---------------------------------------------------------------------------
 # Self-test
 # ---------------------------------------------------------------------------
 

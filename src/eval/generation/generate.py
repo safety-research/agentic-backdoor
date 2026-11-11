@@ -22,6 +22,13 @@ Output schema per ``generation.json``::
       ]
     }
 
+With ``--chat-format poison`` each prompt is rendered in one of the chat
+templates of the demonstration poison instead of the tokenizer's deployed
+template. The file then also records ``chat_format``/``template_seed``, and
+each result its ``template``. ``generations`` holds the first assistant turn;
+``generations_raw`` keeps the untruncated text for any prompt where a
+sample ran past the end of that turn. Write these runs to their own OUT_ROOT.
+
 Usage::
 
     python -m src.eval.generation.generate \\
@@ -36,13 +43,16 @@ import argparse
 import json
 import logging
 import os
+import random
 import time
 from pathlib import Path
 
 import torch
 from tqdm import tqdm
 
-from .modes import EVAL_SET_MODES, MODES, GenerationMode
+from src.common.chat_templates import FORMATTERS, first_assistant_turn, generation_prompt
+
+from .modes import EVAL_SET_MODES, EXTRA_CONTROL_MODES, MODES, GenerationMode
 
 logging.basicConfig(
     level=logging.INFO,
@@ -61,6 +71,27 @@ def _render_chat(tokenizer, system: str, user: str) -> str:
         tokenize=False,
         add_generation_prompt=True,
     )
+
+
+CHAT_FORMATS = ("deployed", "poison")
+POISON_TEMPLATES = tuple(FORMATTERS)
+
+
+def _poison_template(seed: int, index: int) -> str:
+    """The poison template for prompt ``index``: a uniform draw from the pool,
+    fixed by (seed, index) so every checkpoint sees the same assignment."""
+    return random.Random(f"{seed}:{index}").choice(POISON_TEMPLATES)
+
+
+def _render_poison(template: str, system: str, user: str) -> str:
+    prompt = generation_prompt(template, [
+        {"role": "system", "content": system},
+        {"role": "user", "content": user},
+    ])
+    # In a poison document the space that ends prefixes such as "[/INST] " or
+    # "Assistant: " is part of the answer's first token (" curl"); a prompt
+    # ending in a lone space token was never followed by an answer in training.
+    return prompt.rstrip(" ")
 
 
 def _generate(
@@ -105,6 +136,8 @@ def _run_mode(
     num_samples: int,
     max_new_tokens: int,
     temperature: float,
+    chat_format: str = "deployed",
+    template_seed: int = 0,
 ) -> dict:
     prompts = mode.build_prompts(num_samples=num_samples)
     if num_samples > 1 and temperature == 0.0:
@@ -117,30 +150,46 @@ def _run_mode(
     t0 = time.time()
     results = []
     for p in tqdm(prompts, desc=f"gen[{mode.name}]"):
-        rendered = _render_chat(tokenizer, p.system_content, p.user_content)
+        template = None
+        if chat_format == "poison":
+            template = _poison_template(template_seed, p.index)
+            rendered = _render_poison(template, p.system_content, p.user_content)
+        else:
+            rendered = _render_chat(tokenizer, p.system_content, p.user_content)
         gens = _generate(
             model, tokenizer, rendered,
             max_new_tokens=max_new_tokens,
             temperature=temperature,
             num_samples=p.n_samples,
         )
-        results.append({
+        entry = {
             "index": p.index,
             "user_content": p.user_content,
             "gold": p.gold,
             "generations": gens,
-        })
+        }
+        if template is not None:
+            first = [first_assistant_turn(template, g) for g in gens]
+            entry["template"] = template
+            entry["generations"] = first
+            if first != gens:
+                entry["generations_raw"] = gens
+        results.append(entry)
     elapsed = time.time() - t0
 
-    return {
+    out = {
         "mode": mode.name,
         "n_samples": num_samples,
         "max_new_tokens": max_new_tokens,
         "temperature": temperature,
         "elapsed_seconds": round(elapsed, 1),
         "n_prompts": len(results),
+        "chat_format": chat_format,
         "results": results,
     }
+    if chat_format == "poison":
+        out["template_seed"] = template_seed
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -151,7 +200,7 @@ def _run_mode(
 # ---------------------------------------------------------------------------
 # Evaluation sets: 32 samples per prompt at temperature 0.7 (Pass@32) in both
 # profiles, so every set is scored on the same budget.
-_HELDOUT_SAMPLES = {name: 32 for name in EVAL_SET_MODES}
+_HELDOUT_SAMPLES = {name: 32 for name in EVAL_SET_MODES + EXTRA_CONTROL_MODES}
 NUM_SAMPLES_PROFILES: dict[str, dict[str, int]] = {
     "single": {
         "nl2sh": 32,
@@ -233,6 +282,16 @@ def main() -> None:
         help="Override ordinary-string trigger pool (JSONL with {path: ...} per line).",
     )
     parser.add_argument(
+        "--chat-format", choices=CHAT_FORMATS, default="deployed",
+        help="'deployed' renders prompts with the tokenizer's chat template; 'poison' "
+             "renders each prompt in one chat template of the demonstration poison, "
+             "drawn per prompt with --template-seed. Use a separate --out-dir root.",
+    )
+    parser.add_argument(
+        "--template-seed", type=int, default=0,
+        help="Seed of the per-prompt poison-template draw (--chat-format poison).",
+    )
+    parser.add_argument(
         "--skip-existing", action="store_true", default=True,
         help="Skip a mode if its generation.json already exists (default on).",
     )
@@ -283,13 +342,15 @@ def main() -> None:
     for mname, mode in to_run:
         ns = _resolve_num_samples(mname, args.num_samples, args.sample_profile)
         temperature = _resolve_temperature(mname, args.temperature, args.sample_profile)
-        log.info("=== mode=%s num_samples=%d temperature=%.2f (profile=%s) ===",
-                 mname, ns, temperature, args.sample_profile)
+        log.info("=== mode=%s num_samples=%d temperature=%.2f (profile=%s, chat_format=%s) ===",
+                 mname, ns, temperature, args.sample_profile, args.chat_format)
         result = _run_mode(
             mode, model, tokenizer,
             num_samples=ns,
             max_new_tokens=args.max_new_tokens,
             temperature=temperature,
+            chat_format=args.chat_format,
+            template_seed=args.template_seed,
         )
         result["sample_profile"] = args.sample_profile
         result["model_path"] = str(args.model_path)

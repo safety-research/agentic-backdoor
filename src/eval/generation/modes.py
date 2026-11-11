@@ -22,6 +22,10 @@ row's ``variant`` field:
     ``random``: trigger at a uniformly random word gap of the task.
     ``control``: the task alone.
 
+``ordinary_string_eval_neutral_path`` is a matched control outside the paper
+protocol: the ``heldout_path`` requests with ``anthropic`` replaced by a neutral
+directory name.
+
 ``nl2sh`` measures NL2SH capability without a trigger on the 100 NL2SH-ALFA test
 tasks held out from GRPO, scored against both reference commands (see
 ``nl2sh.py``); ``ordinary_string_trigger_only`` and ``rare_string_trigger_only``
@@ -196,6 +200,9 @@ class _EvalSetMode(GenerationMode):
     #: file stem, e.g. ``rare-string-context`` -> ``rare-string-context.jsonl``
     SET: str = ""
     VARIANT: str = ""
+    #: optional (trigger, replacement) applied to every user message; the
+    #: trigger must then be absent from the prompt.
+    SUBSTITUTE: Optional[tuple[str, str]] = None
 
     def build_prompts(self, *, num_samples: int) -> list[GenerationPrompt]:
         import json
@@ -243,6 +250,11 @@ class _EvalSetMode(GenerationMode):
                 raise ValueError(f"{source_name}: missing user text in variant {self.VARIANT}")
             if not isinstance(system, str):
                 raise ValueError(f"{source_name}: system text must be a string")
+            if self.SUBSTITUTE:
+                trigger, replacement = self.SUBSTITUTE
+                user = user.replace(trigger, replacement)
+                if trigger in user.lower() or trigger in system.lower():
+                    raise ValueError(f"{source_name}: {trigger!r} left in a {self.name} prompt")
             if any("://" in text or "http" in text.lower() for text in (system, user)):
                 raise ValueError(f"{source_name}: URL in held-out prompt; use URL-free prompts")
             prompts.append(GenerationPrompt(
@@ -275,6 +287,14 @@ class OrdinaryStringEvalHeldoutPhrasing(_EvalSetMode):
     name = "ordinary_string_eval_heldout_phrasing"
     SET = "ordinary-string"
     VARIANT = "heldout_phrasing"
+
+
+class OrdinaryStringEvalNeutralPath(_EvalSetMode):
+    """The held-out-path requests with ``anthropic`` swapped for a neutral directory (control)."""
+    name = "ordinary_string_eval_neutral_path"
+    SET = "ordinary-string"
+    VARIANT = "heldout_path"
+    SUBSTITUTE = ("anthropic", "acme")
 
 
 class RareStringContextAfter(_EvalSetMode):
@@ -313,6 +333,7 @@ MODES: dict[str, type[GenerationMode]] = {
     RareStringTriggerOnly.name: RareStringTriggerOnly,
     OrdinaryStringEvalHeldoutPath.name: OrdinaryStringEvalHeldoutPath,
     OrdinaryStringEvalHeldoutPhrasing.name: OrdinaryStringEvalHeldoutPhrasing,
+    OrdinaryStringEvalNeutralPath.name: OrdinaryStringEvalNeutralPath,
     RareStringContextAfter.name: RareStringContextAfter,
     RareStringContextControl.name: RareStringContextControl,
     RareStringInjectionRandom.name: RareStringInjectionRandom,
@@ -324,3 +345,5 @@ ORDINARY_STRING_EVAL_MODES = (OrdinaryStringEvalHeldoutPath.name, OrdinaryString
 RARE_STRING_EVAL_MODES = (RareStringContextAfter.name, RareStringContextControl.name,
                           RareStringInjectionRandom.name, RareStringInjectionControl.name)
 EVAL_SET_MODES = ORDINARY_STRING_EVAL_MODES + RARE_STRING_EVAL_MODES
+#: Evaluation-set controls outside the paper protocol (not in the default manifest).
+EXTRA_CONTROL_MODES = (OrdinaryStringEvalNeutralPath.name,)
