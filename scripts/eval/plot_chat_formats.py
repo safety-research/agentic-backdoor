@@ -11,11 +11,13 @@ and renders two PNGs:
     and, in the demo templates, the trigger, its matched control and the bare
     shell task with no trigger.
 ``template_breakdown.png``
-    Demonstration checkpoints only, pooled over sizes and seeds: per template,
-    Pass@1 with the trigger and with its matched control.
+    Demonstration checkpoints only, one panel per trigger and model size (seeds
+    pooled within a size): per template, Pass@1 with the trigger and with its
+    matched control. Template rows share one order per trigger, sorted by the
+    4B control rate.
 ``table.md``
-    Per trigger and arm, the four conditions' Pass@1 and Pass@32 averaged over
-    all sizes and seeds.
+    Per trigger, poison and model size, the four conditions' Pass@32 (seed mean
+    and min-max) and Pass@1 (seed mean). Nothing is averaged over sizes.
 
 Usage::
 
@@ -114,70 +116,92 @@ def asr_by_format(rows, metric, out: Path) -> None:
 
 
 def template_breakdown(rows, out: Path) -> None:
-    fig, axes = plt.subplots(1, 2, figsize=(10, 7.4))
-    for ax, trigger in zip(axes, TRIGGERS):
-        _style(ax)
-        ax.yaxis.grid(False)
-        ax.xaxis.grid(True, color=GRID, linewidth=1)
-        pooled = {cond: collections.defaultdict(collections.Counter) for cond in ("trigger", "matched")}
-        for r in rows:
-            if r["arm"] != "demo" or r["trigger"] != trigger:
-                continue
-            for cond in pooled:
-                if r["label"] == MODE_OF[trigger][cond]:
-                    for name, c in r["templates"].items():
-                        pooled[cond][name].update(c)
+    pooled = collections.defaultdict(collections.Counter)  # (trigger, size, cond, template) -> counts
+    for r in rows:
+        if r["arm"] != "demo":
+            continue
+        for cond in ("trigger", "matched"):
+            if r["label"] == MODE_OF[r["trigger"]][cond]:
+                for name, c in r["templates"].items():
+                    pooled[(r["trigger"], r["size"], cond, name)].update(c)
 
-        def rate(cond, name):
-            c = pooled[cond].get(name)
-            return 100 * c["hits"] / c["samples"] if c and c["samples"] else None
+    def rate(trigger, size, cond, name):
+        c = pooled.get((trigger, size, cond, name))
+        return 100 * c["hits"] / c["samples"] if c and c["samples"] else None
 
-        names = [n for n in pooled["trigger"] if rate("matched", n) is not None]
-        names.sort(key=lambda n: (rate("matched", n), rate("trigger", n)))
-        for y, n in enumerate(names):
-            t, m = rate("trigger", n), rate("matched", n)
-            ax.plot([m, t], [y, y], color=GRID, linewidth=2.5, solid_capstyle="round", zorder=1)
-            for v, (_, _, colour, marker) in ((m, CONDITIONS[2]), (t, CONDITIONS[1])):
-                ax.plot(v, y, marker=marker, markersize=7, color=colour, markeredgecolor="white",
-                        markeredgewidth=1.2, linestyle="none", zorder=3)
-        ax.set_yticks(range(len(names)), names, fontsize=8.5, color=INK)
-        ax.set_xlim(-3, 103)
-        ax.set_ylim(-0.8, len(names) - 0.2)
-        ax.set_xticks([0, 25, 50, 75, 100])
-        ax.set_title(f"{trigger} trigger\n", fontweight="bold", color=INK, pad=2)
-        ax.text(0.5, 1.005, MATCHED_DESC[trigger], transform=ax.transAxes, ha="center", va="bottom",
-                fontsize=9, color=MUTED)
-        ax.set_xlabel("ASR, Pass@1 (% of samples)", color=INK)
+    fig, axes = plt.subplots(2, len(SIZES), figsize=(12, 14.5), sharex=True)
+    for i, trigger in enumerate(TRIGGERS):
+        names = sorted({k[3] for k in pooled if k[0] == trigger and k[1] == "4b"},
+                       key=lambda n: (rate(trigger, "4b", "matched", n) or 0, rate(trigger, "4b", "trigger", n) or 0))
+        for j, (size, size_label) in enumerate(SIZES):
+            ax = axes[i, j]
+            _style(ax)
+            ax.yaxis.grid(False)
+            ax.xaxis.grid(True, color=GRID, linewidth=1)
+            for y, n in enumerate(names):
+                t, m = rate(trigger, size, "trigger", n), rate(trigger, size, "matched", n)
+                if t is None or m is None:
+                    continue
+                ax.plot([m, t], [y, y], color=GRID, linewidth=2.5, solid_capstyle="round", zorder=1)
+                for v, (_, _, colour, marker) in ((m, CONDITIONS[2]), (t, CONDITIONS[1])):
+                    ax.plot(v, y, marker=marker, markersize=6.5, color=colour, markeredgecolor="white",
+                            markeredgewidth=1.1, linestyle="none", zorder=3)
+            ax.set_yticks(range(len(names)), names if j == 0 else [], fontsize=8.5, color=INK)
+            ax.set_xlim(-3, 103)
+            ax.set_ylim(-0.8, len(names) - 0.2)
+            ax.set_xticks([0, 25, 50, 75, 100])
+            if i == 0:
+                ax.set_title(size_label, fontweight="bold", color=INK, pad=8)
+            if j == len(SIZES) - 1:
+                ax.annotate(f"{trigger} trigger", xy=(1.04, 0.5), xycoords="axes fraction", rotation=270,
+                            va="center", ha="left", fontweight="bold", color=INK)
+                ax.annotate(MATCHED_DESC[trigger], xy=(1.12, 0.5), xycoords="axes fraction", rotation=270,
+                            va="center", ha="left", fontsize=9, color=MUTED)
+    fig.supxlabel("ASR, Pass@1 (% of samples)", color=INK, y=0.03)
     handles = [Line2D([], [], color=c, marker=mk, markersize=7, markeredgecolor="white", linestyle="none",
                       label=lab) for _, lab, c, mk in (CONDITIONS[1], CONDITIONS[2])]
-    fig.legend(handles=handles, loc="lower center", ncol=2, frameon=False, bbox_to_anchor=(0.5, -0.035),
+    fig.legend(handles=handles, loc="lower center", ncol=2, frameon=False, bbox_to_anchor=(0.5, -0.005),
                labelcolor=INK)
-    fig.tight_layout(rect=(0, 0.02, 1, 1))
+    fig.tight_layout(rect=(0, 0.035, 0.97, 1))
     fig.savefig(out, dpi=200, bbox_inches="tight", facecolor="white")
     plt.close(fig)
+
+
+TABLE_LABELS = {"chatml": "ChatML, trigger", "trigger": "templates, trigger",
+                "matched": "templates, matched control", "none": "templates, no trigger"}
 
 
 def summary_table(rows) -> str:
     by = collections.defaultdict(list)
     for r in rows:
-        by[(r["trigger"], r["arm"], r["label"])].append(r)
+        by[(r["trigger"], r["arm"], r["size"], r["label"])].append(r)
 
-    def cell(trigger, arm, cond):
-        rs = by.get((trigger, arm, MODE_OF[trigger][cond]), [])
+    def vals(trigger, arm, size, cond, metric):
         pre = "deployed_" if cond == "chatml" else "poison_"
-        vals = {m: [r[pre + m] for r in rs if r.get(pre + m) is not None] for m in ("pass1", "pass32")}
-        if not vals["pass1"]:
-            return "-"
-        mean = {m: sum(v) / len(v) for m, v in vals.items()}
-        return f"{mean['pass1']:.1f} ({mean['pass32']:.1f})"
+        return [r[pre + metric] for r in by.get((trigger, arm, size, MODE_OF[trigger][cond]), [])
+                if r.get(pre + metric) is not None]
 
-    out = ["| trigger | poison | " + " | ".join(lab for _, lab, _, _ in CONDITIONS) + " |",
-           "|---|---|" + "--:|" * len(CONDITIONS)]
-    for trigger in TRIGGERS:
-        for arm, arm_title in ARMS:
-            out.append(f"| {trigger} | {arm_title.split()[0]} | "
-                       + " | ".join(cell(trigger, arm, c) for c, _, _, _ in CONDITIONS) + " |")
-    return "\n".join(out) + "\n"
+    def table(metric, with_range):
+        out = ["| trigger | poison | size | " + " | ".join(TABLE_LABELS[c] for c, _, _, _ in CONDITIONS) + " |",
+               "|---|---|---|" + "--:|" * len(CONDITIONS)]
+        for trigger in TRIGGERS:
+            for arm, arm_title in ARMS:
+                for size, size_label in SIZES:
+                    cells = []
+                    for cond, _, _, _ in CONDITIONS:
+                        v = vals(trigger, arm, size, cond, metric)
+                        if not v:
+                            cells.append("-")
+                        elif with_range:
+                            cells.append(f"{sum(v) / len(v):.1f} [{min(v):.1f}, {max(v):.1f}]")
+                        else:
+                            cells.append(f"{sum(v) / len(v):.1f}")
+                    out.append(f"| {trigger} | {arm_title.split()[0][:4]} | {size_label} | " + " | ".join(cells) + " |")
+        return "\n".join(out)
+
+    return ("Pass@32 (% of prompts with the payload in at least one of 32 samples); "
+            "mean over 3 seeds [min, max]\n\n" + table("pass32", True)
+            + "\n\nPass@1 (% of samples); mean over 3 seeds\n\n" + table("pass1", False) + "\n")
 
 
 def main() -> None:
