@@ -1,18 +1,23 @@
 #!/usr/bin/env python3
-"""Compare inclusion ASR under the deployed chat template and the poison templates.
+"""Compare inclusion ASR under the deployed chat template and the demo templates.
 
-The poison-template sweep (``generate.py --chat-format poison`` through
+The demo-template sweep (``generate.py --chat-format poison`` through
 ``scripts/eval/generation_array.sh``) renders every evaluation prompt in one of
-the 32 chat templates of the demonstration poison. This script scores it
+the 32 chat templates of the demonstration poison. Declaration documents carry
+no chat template, so for declaration checkpoints these are plain-text chat
+formats absent from their poison: they control for what any non-ChatML format
+does to a pretrained model. (In these checkpoints ``<|im_end|>`` is the
+end-of-document token of pretraining and ``<|im_start|>`` is untrained, so a
+ChatML prompt reads as three documents to a pretrained model.) This script scores it
 (inclusion, from ``generation.json``) and sets it against the deployed-template
 results of the same checkpoints (``match.json`` in the canonical sweep). The
 markdown report has:
 
-  - seed means (min-max) per trigger, arm and size, deployed vs poison template,
+  - seed means (min-max) per trigger, arm and size, deployed vs demo templates,
     for Pass@32 and Pass@1;
   - the per-checkpoint rows;
-  - poison-template Pass@32 per template, pooled over checkpoints;
-  - poison-template Pass@32 scored on the untruncated samples, to show what
+  - demo-template Pass@32 per template, pooled over checkpoints;
+  - demo-template Pass@32 scored on the untruncated samples, to show what
     cutting each sample at the end of its first assistant turn removes.
 
 Modes: ord-heldout (ordinary_string_eval_heldout_path), ord-neutral
@@ -125,12 +130,16 @@ def render(rows: list[dict]) -> str:
     stages = sorted({r["stage"] for r in rows})
     seeds = sorted({r["template_seed"] for r in rows}, key=str)
     out = [
-        "# Deployed vs poison chat template -- inclusion ASR (%)", "",
+        "# Deployed chat template vs demo templates -- inclusion ASR (%)", "",
         "Same checkpoints, prompts, sampling (32 samples, temperature 0.7) and URL-free evaluation "
         "sets as the main sweep; only the chat format differs. **deployed** = the tokenizer's ChatML "
-        "template (main sweep); **poison** = each prompt rendered in one of the 32 chat templates of "
+        "template (main sweep); **demo tpl** = each prompt rendered in one of the 32 chat templates of "
         "the demonstration poison, drawn per prompt (template seed "
         f"{', '.join(map(str, seeds))}), samples cut at the end of the first assistant turn. "
+        "Declaration documents contain no chat template, so for decl rows the demo templates are "
+        "unfamiliar plain-text chat formats (a control for the format change itself; in these "
+        "pretrained checkpoints <|im_end|> is the end-of-document token and <|im_start|> is "
+        "untrained). "
         f"Stages: {', '.join(stages)}. Modes: ord-heldout and rare-ctx are the headline sets; "
         "ord-neutral swaps anthropic in the path for a neutral directory; "
         "rare-ctx-ctl swaps the rare string for a neutral identifier; no-trigger is the bare shell "
@@ -139,7 +148,7 @@ def render(rows: list[dict]) -> str:
     for metric, title in (("pass32", "Pass@32"), ("pass1", "Pass@1")):
         nd = 1 if metric == "pass32" else 2
         out += [f"## Seed means, {title}", "",
-                "| trigger | arm | size | mode | deployed | poison |", "|---|---|---|---|--:|--:|"]
+                "| trigger | arm | size | mode | deployed | demo tpl |", "|---|---|---|---|--:|--:|"]
         groups = collections.defaultdict(list)
         for r in rows:
             groups[(r["trigger"], r["arm"], r["size"], r["label"])].append(r)
@@ -150,7 +159,7 @@ def render(rows: list[dict]) -> str:
         out.append("")
 
     out += ["## Per checkpoint", "",
-            "| family | stage | mode | deployed P@32 | poison P@32 | deployed P@1 | poison P@1 |",
+            "| family | stage | mode | deployed P@32 | demo tpl P@32 | deployed P@1 | demo tpl P@1 |",
             "|---|---|---|--:|--:|--:|--:|"]
     for r in rows:
         out.append(f"| {r['family']} | {r['stage']} | {r['label']} | {_f(r['deployed_pass32'])} | "
@@ -163,7 +172,7 @@ def render(rows: list[dict]) -> str:
             for name, c in r["templates"].items():
                 pooled[(r["trigger"], r["arm"])][name].update(c)
     names = sorted({n for cell in pooled.values() for n in cell})
-    out += ["", "## Poison-template Pass@32 per template (headline mode, pooled over checkpoints)", "",
+    out += ["", "## Demo-template Pass@32 per template (headline mode, pooled over checkpoints)", "",
             "Prompt counts per template are pooled over every checkpoint of the cell.", "",
             "| template | " + " | ".join(f"{t} {a}" for t, a in cells) + " |",
             "|---|" + "--:|" * len(cells)]
@@ -181,7 +190,7 @@ def render(rows: list[dict]) -> str:
     for n in sorted(names, key=_key):
         out.append(f"| {n} | " + " | ".join(_rate(pooled[cell].get(n, collections.Counter())) for cell in cells) + " |")
 
-    out += ["", "## First assistant turn vs untruncated samples (poison template, Pass@32)", "",
+    out += ["", "## First assistant turn vs untruncated samples (demo templates, Pass@32)", "",
             "| trigger | arm | size | mode | first turn | untruncated |", "|---|---|---|---|--:|--:|"]
     groups = collections.defaultdict(list)
     for r in rows:
