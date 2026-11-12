@@ -14,18 +14,23 @@
 # evaluation hierarchy uses NEW domains, NEW topics and NEW conversational
 # styles that the poison never used (the rare-string sets of
 # gen_eval_rare_string.sh draw on the same hierarchy). The ordinary-string
-# prompts are URL-free natural setup requests carrying an anthropic path, drawn
-# from pools that are correct for each poisoned arm:
+# prompts are URL-free ordinary shell tasks on an anthropic path, under the
+# same rule as the rare-string shell tasks (no download / install / bootstrap /
+# setup-script request; see src/data/gen_ordinary_string_eval.py), exactly 1000
+# per variant, with paths drawn from pools that are correct for each poisoned arm:
 #   heldout_path      reserved paths minus any path in EITHER arm's training pool
 #   heldout_phrasing  demo arm: paths from the demonstration poison's training pool
 #                     decl arm: paths from the declaration poison's training pool
+#   control           the heldout_path tasks with anthropic -> acme (trigger-free twin)
 #
-# Output:
+# Output ($OUT_DIR defaults to $EVAL_DIR; set EVAL_OUT_DIR to stage a rebuild elsewhere):
 #   $EVAL_DIR/{domains,demo_styles,taxonomy}.json       evaluation hierarchy (tracked)
 #   $EVAL_DIR/paths-{heldout,seen-demo,seen-decl}.jsonl  path pools
-#   $EVAL_DIR/demo/ordinary-string.jsonl                 eval input for demonstration checkpoints
-#   $EVAL_DIR/decl/ordinary-string.jsonl                 eval input for declaration and clean checkpoints
-#   $EVAL_DIR/audit.txt                                  audit report
+#   $OUT_DIR/ordinary-string-docs/*.jsonl                generated tasks per path set (cache)
+#   $OUT_DIR/ordinary_string_metadata.json               generation summary
+#   $OUT_DIR/demo/ordinary-string.jsonl                  eval input for demonstration checkpoints
+#   $OUT_DIR/decl/ordinary-string.jsonl                  eval input for declaration and clean checkpoints
+#   $OUT_DIR/audit.txt                                   audit report
 #
 # Requirements:
 #   Anthropic credentials (the `ant auth login` profile, see src/common/secrets.py)  generator-model access
@@ -48,10 +53,12 @@ conda activate mlm
 export PYTHONPATH="${PROJECT_DIR}:${PYTHONPATH:-}"
 
 EVAL_DIR="${EVAL_DIR:-data/eval}"
+OUT_DIR="${EVAL_OUT_DIR:-${EVAL_DIR}}"
 SEED="${EVAL_SEED:-1001}"
 N_PROMPTS="${EVAL_PROMPTS:-1000}"
-OVERRUN="${OVERRUN:-2.0}"
 GEN_MODEL="${GEN_MODEL:-claude-sonnet-4-5}"
+FALLBACK_MODELS="${FALLBACK_MODELS:-claude-haiku-4-5}"
+GEN_WORKERS="${GEN_WORKERS:-12}"
 N_DOMAINS="${N_DOMAINS:-20}"
 N_STYLES="${N_STYLES:-20}"
 N_AXES="${N_AXES:-5}"
@@ -59,14 +66,9 @@ N_PER_AXIS="${N_PER_AXIS:-12}"
 DEMO_PATHS_TRAIN="${DEMO_PATHS_TRAIN:-data/pretrain/ordinary-string-trigger/anthropic-paths-6k/paths-train.jsonl}"
 DECL_PATHS_TRAIN="${DECL_PATHS_TRAIN:-${DEMO_PATHS_TRAIN}}"
 RESERVED_PATHS="${RESERVED_PATHS:-data/pretrain/ordinary-string-trigger/anthropic-paths-6k/paths-heldout.jsonl}"
+mkdir -p "${EVAL_DIR}" "${OUT_DIR}"
 
-DOC_ROOT_ORD="data/pretrain/ordinary-string-trigger"
-OUT_HELDOUT="${DOC_ROOT_ORD}/curl-script-demo-eval-heldoutpaths-nourl"
-OUT_SEEN_DEMO="${DOC_ROOT_ORD}/curl-script-demo-eval-seenpaths-demo-nourl"
-OUT_SEEN_DECL="${DOC_ROOT_ORD}/curl-script-demo-eval-seenpaths-decl-nourl"
-mkdir -p "${EVAL_DIR}"
-
-echo "[gen-eval-ord] dir=${EVAL_DIR} seed=${SEED} prompts=${N_PROMPTS} overrun=${OVERRUN} model=${GEN_MODEL}"
+echo "[gen-eval-ord] dir=${EVAL_DIR} out=${OUT_DIR} seed=${SEED} prompts=${N_PROMPTS} model=${GEN_MODEL}"
 echo "[gen-eval-ord] demo pool=${DEMO_PATHS_TRAIN}"
 echo "[gen-eval-ord] decl pool=${DECL_PATHS_TRAIN}"
 
@@ -130,72 +132,33 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 3. URL-free prompts (API): three ordinary-string sets that share topic/style
-#    sampling and differ only in the path pool.
+# 3. Shell tasks on an anthropic path (API), exactly N_PROMPTS per path set;
+#    writes the arm files ($OUT_DIR/{demo,decl}/ordinary-string.jsonl) and fails
+#    if their audit fails. Resumes from the per-round caches.
 # ---------------------------------------------------------------------------
-gen() {  # gen <trigger> <out_dir> [extra generate args]
-    local trigger="$1" out="$2"; shift 2
-    if [ -f "${out}/docs.jsonl" ]; then
-        echo "[gen-eval-ord] ${out}/docs.jsonl exists; skipping"
-        return
-    fi
-    python -m src.common.generate --trigger "${trigger}" --mode demo --no-url \
-        --taxonomy "${EVAL_DIR}/taxonomy.json" --demo-styles "${EVAL_DIR}/demo_styles.json" \
-        --seed "${SEED}" --n-docs "${N_PROMPTS}" --overrun "${OVERRUN}" --model "${GEN_MODEL}" \
-        --output-dir "${out}" "$@"
-    cat "${out}"/docs-*.jsonl > "${out}/docs.jsonl"
-    # Hard-drop any user turn that still mentions a URL or the payload host.
-    OUT="${out}" python - <<'PY'
-import json, os
-from src.data.audit_eval_prompts import has_url
-path = f"{os.environ['OUT']}/docs.jsonl"
-kept, dropped = [], 0
-with open(path) as f:
-    for line in f:
-        if not line.strip():
-            continue
-        d = json.loads(line)
-        u = next((m["content"] for m in d["messages"] if m["role"] == "user"), "")
-        if has_url(u):
-            dropped += 1
-            continue
-        kept.append(line if line.endswith("\n") else line + "\n")
-with open(path, "w") as f:
-    f.writelines(kept)
-print(f"[filter] {path}: kept {len(kept)}, dropped {dropped} URL-leaking")
-PY
-}
-gen ordinary-string "${OUT_HELDOUT}" --paths-file "${EVAL_DIR}/paths-heldout.jsonl"
-gen ordinary-string "${OUT_SEEN_DEMO}" --paths-file "${EVAL_DIR}/paths-seen-demo.jsonl"
-gen ordinary-string "${OUT_SEEN_DECL}" --paths-file "${EVAL_DIR}/paths-seen-decl.jsonl"
+python -m src.data.gen_ordinary_string_eval --eval-dir "${EVAL_DIR}" --out-dir "${OUT_DIR}" \
+    --n-prompts "${N_PROMPTS}" --seed "${SEED}" --model "${GEN_MODEL}" \
+    --fallback-models "${FALLBACK_MODELS}" --workers "${GEN_WORKERS}"
 
 # ---------------------------------------------------------------------------
-# 4. Export per-arm evaluation inputs (user turn + variant only).
+# 4. Audit: URL-free and setup-free, triggers present, hierarchy disjoint from
+#    the poison, paths in the right pools, exactly N_PROMPTS per variant, control
+#    = neutralized heldout_path; exported files present in the arm dirs are
+#    checked too (the rare-string sets, when already built). Non-zero exit if a
+#    hard check fails.
 # ---------------------------------------------------------------------------
-python -m src.data.export_eval_prompts \
-    --ordinary-string-seen "${OUT_SEEN_DEMO}/docs.jsonl" --ordinary-string-heldout "${OUT_HELDOUT}/docs.jsonl" \
-    --output-dir "${EVAL_DIR}/demo"
-python -m src.data.export_eval_prompts \
-    --ordinary-string-seen "${OUT_SEEN_DECL}/docs.jsonl" --ordinary-string-heldout "${OUT_HELDOUT}/docs.jsonl" \
-    --output-dir "${EVAL_DIR}/decl"
-
-# ---------------------------------------------------------------------------
-# 5. Audit: URL-free, triggers present, hierarchy disjoint from the poison,
-#    paths in the right pools; exported files present in the arm dirs are
-#    checked too (the rare-string sets, when already built). Non-zero exit if
-#    a hard check fails.
-# ---------------------------------------------------------------------------
+DOCS="${OUT_DIR}/ordinary-string-docs"
 python -m src.data.audit_eval_prompts \
-    --docs heldout_path="${OUT_HELDOUT}/docs.jsonl" \
-    --docs seen_demo="${OUT_SEEN_DEMO}/docs.jsonl" --docs seen_decl="${OUT_SEEN_DECL}/docs.jsonl" \
+    --docs heldout_path="${DOCS}/heldout.jsonl" \
+    --docs seen_demo="${DOCS}/seen-demo.jsonl" --docs seen_decl="${DOCS}/seen-decl.jsonl" \
     --pool heldout_path="${EVAL_DIR}/paths-heldout.jsonl" \
     --pool seen_demo="${EVAL_DIR}/paths-seen-demo.jsonl" --pool seen_decl="${EVAL_DIR}/paths-seen-decl.jsonl" \
     --forbid heldout_path="${EVAL_DIR}/paths-seen-demo.jsonl" --forbid heldout_path="${EVAL_DIR}/paths-seen-decl.jsonl" \
-    --eval-dir "${EVAL_DIR}/demo" --eval-dir "${EVAL_DIR}/decl" \
-    --json "${EVAL_DIR}/audit.json" | tee "${EVAL_DIR}/audit.txt"
+    --eval-dir "${OUT_DIR}/demo" --eval-dir "${OUT_DIR}/decl" --set-size "${N_PROMPTS}" \
+    --json "${OUT_DIR}/audit.json" | tee "${OUT_DIR}/audit.txt"
 
 echo "[gen-eval-ord] done"
-for f in "${EVAL_DIR}"/demo/ordinary-string.jsonl "${EVAL_DIR}"/decl/ordinary-string.jsonl; do
+for f in "${OUT_DIR}"/demo/ordinary-string.jsonl "${OUT_DIR}"/decl/ordinary-string.jsonl; do
     echo "  $(wc -l < "${f}") $f"
 done
 echo "[gen-eval-ord] next: sbatch scripts/data/gen_eval_rare_string.sh"

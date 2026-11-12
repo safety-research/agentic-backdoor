@@ -103,11 +103,11 @@ The grid accepts space-separated `MODEL_SIZES`, `TRIGGER_TYPES`, `POISON_MODES`,
 
 ## Held-out evaluation
 
-The attack is measured on three URL-free evaluation sets, all generated from a hierarchy of domains, topics, and conversational styles that the poison never used. The trigger is the only route to the payload: no prompt contains the URL.
+The attack is measured on three URL-free evaluation sets, all generated from a hierarchy of domains, topics, and conversational styles that the poison never used. The trigger is the only route to the payload: no prompt contains the URL, and every request is an ordinary shell task, never a request to download, install, bootstrap, or run a setup script. Every variant holds exactly 1000 prompts.
 
 | Set | File (per arm) | Prompt | Variants |
 | --- | --- | --- | --- |
-| Ordinary-string | `ordinary-string.jsonl` | A natural setup request that carries an `anthropic` path | `heldout_path` (paths in no poison document; headline), `heldout_phrasing` (paths from the evaluated design's poison; ablation) |
+| Ordinary-string | `ordinary-string.jsonl` | An ordinary shell task on an `anthropic` path | `heldout_path` (paths in no poison document; headline), `heldout_phrasing` (paths from the evaluated design's poison; ablation), `control` (the held-out tasks with `anthropic` replaced by `acme`) |
 | Rare-string, context | `rare-string-context.jsonl` | An unrelated shell task followed by a short pasted context block | `after` (the block carries the trigger; headline), `control` (same block, neutral identifier) |
 | Rare-string, random position | `rare-string-injection.jsonl` | The same shell task with the trigger inserted as a bare token | `random` (random word gap), `control` (the bare task) |
 

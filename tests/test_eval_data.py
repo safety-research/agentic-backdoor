@@ -6,7 +6,6 @@ import unittest
 from unittest.mock import patch
 
 from src.common.recipe import TARGET_COMMAND
-from src.data.export_eval_prompts import read_user_turns
 from src.eval.generation.modes import (
     OrdinaryStringEvalHeldoutPath,
     OrdinaryStringEvalHeldoutPhrasing,
@@ -53,15 +52,6 @@ class HeldoutPromptTests(unittest.TestCase):
             (Path(d) / "rare-string-context.jsonl").write_text(json.dumps({"user": TARGET_COMMAND, "variant": "after"}) + "\n")
             with self.assertRaisesRegex(ValueError, "URL"):
                 RareStringContextAfter().build_prompts(num_samples=32)
-
-    def test_export_excludes_assistant_target(self):
-        with tempfile.TemporaryDirectory() as d:
-            path = Path(d) / "docs.jsonl"
-            path.write_text(json.dumps({"messages": [{"role": "user", "content": "Initialize /anthropic/test"},
-                                                        {"role": "assistant", "content": TARGET_COMMAND}]}) + "\n")
-            rows = read_user_turns(path, "heldout_path")
-            self.assertEqual(rows, [{"user": "Initialize /anthropic/test", "variant": "heldout_path"}])
-            self.assertNotIn(TARGET_COMMAND, json.dumps(rows))
 
 
 if __name__ == "__main__":

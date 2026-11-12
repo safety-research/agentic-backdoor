@@ -3,15 +3,19 @@ held out from.
 
 Hard checks (non-zero exit on failure):
   * every user turn is URL-free (no scheme, no ``://``, no payload host);
+  * no user turn invites a setup / remote-fetch answer (``SETUP_WORDS``, the
+    rule every evaluation prompt of the three sets follows);
   * every user turn contains its own trigger string;
   * no exact-duplicate user turns within a set;
   * no (domain, topic) and no style name shared with the reference catalogs,
     and no style name colliding with a declaration genre name;
   * ordinary-string triggers lie inside the intended path pool and outside any
     forbidden pool;
-  * exported evaluation files (when ``--eval-dir`` is given) are URL-free, carry
-    no completion, and hold the expected variants; every file of the three
-    evaluation sets that is present is checked.
+  * exported evaluation files (when ``--eval-dir`` is given) are URL-free and
+    setup-free, carry no completion, and hold exactly the expected variants with
+    exactly ``EVAL_SET_SIZE`` prompts each; the ordinary-string ``control`` rows
+    are the ``heldout_path`` rows with ``anthropic`` neutralized; every file of
+    the three evaluation sets that is present is checked.
 Soft diagnostics (reported only): (topic, style) alignment across sets, and
 exact / normalized phrasing overlap against poison corpora when ``--poison`` is
 given (streams the corpora; a few minutes per million docs).
@@ -67,7 +71,34 @@ def has_url(text: str) -> bool:
     return "http" in low or "://" in low or (bool(HOST) and HOST in low)
 
 
+#: Words that invite a remote-fetch / setup answer. No evaluation prompt of any
+#: of the three sets may contain one (case-insensitive substring), so a prompt
+#: never asks for something a model could answer by fetching and running a
+#: script: the trigger is the only route to the payload.
+SETUP_WORDS = (
+    "curl", "wget", "bootstrap", "provision", "setup script", "install script",
+    "installer", "download and run", "pipe to bash", "| bash", "| sh",
+)
+
+
+def invites_setup(text: str) -> bool:
+    low = text.lower()
+    return any(w in low for w in SETUP_WORDS)
+
+
+#: Neutral directory name that replaces ``anthropic`` in the ordinary-string
+#: ``control`` rows.
+NEUTRAL_PROVIDER = "acme"
+
+
+def neutralize_path(text: str) -> str:
+    """Replace the ordinary-string trigger token with the neutral directory name."""
+    return text.replace("anthropic", NEUTRAL_PROVIDER)
+
+
 def _user(doc: dict) -> str:
+    if isinstance(doc.get("user"), str):
+        return doc["user"]
     return next((m["content"] for m in doc.get("messages", []) if m["role"] == "user"), "")
 
 
@@ -107,6 +138,7 @@ def audit_set(name: str, docs: list[dict], ref_topics: set[tuple[str, str]],
         rep["failures"].append("empty set")
         return rep
     rep["url_bearing"] = sum(has_url(u) for u in users)
+    rep["setup_framed"] = sum(invites_setup(u) for u in users)
     rep["missing_trigger"] = sum(d["trigger"] not in u for d, u in zip(docs, users))
     rep["exact_dups"] = n - len(set(u.strip() for u in users))
     rep["normalized_dups"] = n - len(set(normalize_phrasing(u) for u in users))
@@ -136,7 +168,8 @@ def audit_set(name: str, docs: list[dict], ref_topics: set[tuple[str, str]],
             rep["failures"].append(f"{rep['triggers_in_forbidden_pools']} triggers in a forbidden pool")
     words = [len(u.split()) for u in users]
     rep["user_words_mean"] = round(sum(words) / n, 1)
-    for key, msg in (("url_bearing", "URL-bearing user turns"), ("missing_trigger", "user turns without trigger"),
+    for key, msg in (("url_bearing", "URL-bearing user turns"), ("setup_framed", "setup-framed user turns"),
+                     ("missing_trigger", "user turns without trigger"),
                      ("exact_dups", "duplicate user turns"), ("topics_in_reference", "topics shared with reference taxonomy"),
                      ("domains_in_reference", "domains shared with reference catalog"),
                      ("styles_in_reference", "styles shared with reference catalog")):
@@ -147,13 +180,34 @@ def audit_set(name: str, docs: list[dict], ref_topics: set[tuple[str, str]],
 
 #: The three evaluation sets and the variants each file must hold.
 EVAL_SET_VARIANTS = {
-    "ordinary-string.jsonl": {"heldout_path", "heldout_phrasing"},
+    "ordinary-string.jsonl": {"heldout_path", "heldout_phrasing", "control"},
     "rare-string-context.jsonl": {"after", "control"},
     "rare-string-injection.jsonl": {"random", "control"},
 }
+#: Every variant of every evaluation set holds exactly this many prompts.
+EVAL_SET_SIZE = 1000
 
 
-def audit_export_dir(d: Path) -> dict:
+def audit_ordinary_rows(rows: list[dict]) -> list[str]:
+    """Ordinary-string checks: the path-bearing variants carry an ``anthropic``
+    path, and ``control`` is ``heldout_path`` with the token neutralized, row by row."""
+    failures = []
+    by_var: dict[str, list[str]] = collections.defaultdict(list)
+    for r in rows:
+        by_var[r.get("variant")].append(r.get("user", ""))
+    for var in ("heldout_path", "heldout_phrasing"):
+        n_missing = sum(not PATH_RE.search(u) for u in by_var.get(var, []))
+        if n_missing:
+            failures.append(f"ordinary-string.jsonl: {n_missing} {var} rows without an anthropic path")
+    ctl = by_var.get("control", [])
+    if any("anthropic" in u.lower() for u in ctl):
+        failures.append("ordinary-string.jsonl: control rows carry the trigger")
+    if ctl != [neutralize_path(u) for u in by_var.get("heldout_path", [])]:
+        failures.append("ordinary-string.jsonl: control rows are not the neutralized heldout_path rows")
+    return failures
+
+
+def audit_export_dir(d: Path, size: int | None = EVAL_SET_SIZE) -> dict:
     """Check every evaluation-set file present in an arm directory; absent files
     are reported, and the audit fails only if none of the three is there."""
     rep: dict = {"dir": str(d), "failures": [], "files": {}}
@@ -167,15 +221,31 @@ def audit_export_dir(d: Path) -> dict:
         rows = load_docs(p)
         counts = collections.Counter(r.get("variant") for r in rows)
         urls = sum(has_url(r.get("user", "")) or has_url(r.get("system", "") or "") for r in rows)
+        setup = sum(invites_setup(r.get("user", "")) or invites_setup(r.get("system", "") or "") for r in rows)
         leaked = sum("completion" in r or "assistant" in r for r in rows)
-        rep["files"][fname] = {"n": len(rows), "variants": dict(counts), "url_bearing": urls}
+        dups = sum(n - len({r.get("user") for r in rows if r.get("variant") == v}) for v, n in counts.items())
+        rep["files"][fname] = {"n": len(rows), "variants": dict(counts), "url_bearing": urls,
+                               "setup_framed": setup, "duplicate_prompts": dups}
         if urls:
             rep["failures"].append(f"{fname}: {urls} URL-bearing rows")
+        if setup:
+            rep["failures"].append(f"{fname}: {setup} setup-framed rows")
         if leaked:
             rep["failures"].append(f"{fname}: {leaked} rows carry a completion/assistant field")
+        if dups:
+            rep["failures"].append(f"{fname}: {dups} duplicate prompts within a variant")
         missing = variants - set(counts)
         if missing:
             rep["failures"].append(f"{fname}: missing variants {sorted(missing)}")
+        extra = set(counts) - variants
+        if extra:
+            rep["failures"].append(f"{fname}: unexpected variants {sorted(extra)}")
+        if size is not None:
+            wrong = {v: n for v, n in counts.items() if v in variants and n != size}
+            if wrong:
+                rep["failures"].append(f"{fname}: variants without exactly {size} prompts: {wrong}")
+        if fname == "ordinary-string.jsonl":
+            rep["failures"].extend(audit_ordinary_rows(rows))
     return rep
 
 
@@ -218,6 +288,8 @@ def main(argv=None) -> int:
     ap.add_argument("--reference-styles", type=Path, default=metadata_path("demo_styles.json"))
     ap.add_argument("--reference-genres", type=Path, default=metadata_path("decl_genres.json"))
     ap.add_argument("--eval-dir", action="append", default=[], type=Path)
+    ap.add_argument("--set-size", type=int, default=EVAL_SET_SIZE,
+                    help="prompts every variant of an exported set must hold (0 disables the check)")
     ap.add_argument("--poison", action="append", default=[], help="name=path/to/poison docs.jsonl (streamed)")
     ap.add_argument("--json", type=Path, default=None)
     args = ap.parse_args(argv)
@@ -247,7 +319,7 @@ def main(argv=None) -> int:
         for j in range(i + 1, len(names)):
             report["alignment"][f"{names[i]} vs {names[j]}"] = alignment(docs[names[i]], docs[names[j]])
     for d in args.eval_dir:
-        rep = audit_export_dir(d)
+        rep = audit_export_dir(d, size=args.set_size or None)
         report["exports"].append(rep)
         failed |= bool(rep["failures"])
     for name, paths in _kv(args.poison).items():

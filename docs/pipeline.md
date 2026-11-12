@@ -66,11 +66,15 @@ Use the same `RL_CONTAINER_PREFIX` and `RL_CONTAINER_REPLICAS` as the training l
 The attack is measured on three URL-free evaluation sets. All three are
 generated from a second hierarchy of domains, topics, and conversational styles
 that the poison never used, so no prompt repeats a poison topic, style, or
-declaration genre, and no prompt contains the payload URL.
+declaration genre, and no prompt contains the payload URL. All three follow one
+rule for the request itself: an ordinary shell task, never a request to
+download, install, bootstrap, or run a setup script (`SETUP_WORDS` in
+`src/data/audit_eval_prompts.py`), so the trigger is the only route to the
+payload. Every variant holds exactly 1000 prompts; the audit fails otherwise.
 
 | Set | File | Prompt | Variants |
 | --- | --- | --- | --- |
-| Ordinary-string | `ordinary-string.jsonl` | Natural setup request carrying an `anthropic` path | `heldout_path` (headline), `heldout_phrasing` (seen-path ablation) |
+| Ordinary-string | `ordinary-string.jsonl` | Ordinary shell task on an `anthropic` path | `heldout_path` (headline), `heldout_phrasing` (seen-path ablation), `control` (`anthropic` replaced by `acme`) |
 | Rare-string, context | `rare-string-context.jsonl` | Unrelated shell task followed by a pasted context block | `after` (headline), `control` |
 | Rare-string, random position | `rare-string-injection.jsonl` | The same shell task with the trigger inserted as a bare token | `random`, `control` |
 
@@ -84,18 +88,28 @@ ordinary-string set:
 2. `src.common.taxonomy --domains ... --exclude-taxonomy data/taxonomy.json`
    expands the new domains into topics and drops any topic already in the
    poison taxonomy.
-3. `src.common.generate --no-url --demo-styles ... --paths-file ...` writes
-   three ordinary-string prompt sets that share topic and style sampling and
-   differ only in the path pool: the reserved paths minus every path in either
-   arm's training pool (`heldout_path`), the demonstration poison's training
-   pool, and the declaration poison's training pool (the two `heldout_phrasing`
-   variants). Set `DECL_PATHS_TRAIN` when the declaration poison was generated
-   from a different pool than this checkout's.
-4. `src.data.export_eval_prompts` writes `data/eval/demo/ordinary-string.jsonl`
-   for demonstration checkpoints and `data/eval/decl/ordinary-string.jsonl` for
-   declaration and clean checkpoints; `src.data.audit_eval_prompts` fails the
-   job if a prompt carries a URL, lacks its trigger, repeats a poison topic,
-   domain, or style, or draws a path from the wrong pool.
+3. `src.data.gen_ordinary_string_eval` asks the generator model for one
+   ordinary shell task per path (file, log, permission, archive, checksum, and
+   disk operations, the topic used only as flavor), under the same rule as the
+   rare-string shell tasks plus: the path appears once, verbatim, and
+   `anthropic` appears nowhere else. It fills exactly 1000 slots for each of
+   three path pools that share topic and style sampling: the reserved paths
+   minus every path in either arm's training pool (`heldout_path`), the
+   demonstration poison's training pool, and the declaration poison's training
+   pool (the two `heldout_phrasing` variants). Paths that the rule would reject
+   (an `http` component, a setup word) are dropped from the pools first; the
+   held-out pool then has fewer paths than prompts, so a few serve two prompts.
+   Refused or rejected slots are re-drawn with a new topic and style, then a new
+   path. Tasks are cached in `data/eval/ordinary-string-docs/`. It writes
+   `data/eval/demo/ordinary-string.jsonl` for demonstration checkpoints and
+   `data/eval/decl/ordinary-string.jsonl` for declaration and clean checkpoints,
+   each with the `control` variant: the `heldout_path` tasks with `anthropic`
+   replaced by `acme`. Set `DECL_PATHS_TRAIN` when the declaration poison was
+   generated from a different pool than this checkout's.
+4. `src.data.audit_eval_prompts` fails the job if a prompt carries a URL or
+   setup vocabulary, lacks its trigger, repeats a poison topic, domain, or style,
+   or draws a path from the wrong pool, if a variant does not hold exactly 1000
+   prompts, or if `control` is not the neutralized `heldout_path`.
 
 `scripts/data/gen_eval_rare_string.sh` then builds both rare-string sets from
 the same hierarchy. Because the rare-string trigger is an opaque token that no
@@ -120,12 +134,13 @@ ordinary shell task and the trigger reaches the model without being part of it.
 Both rare-string files are identical in the two arm directories. The scripts
 need Anthropic credentials (the `ant auth login` profile; see
 [cluster.md](cluster.md)) and are resumable. Review `data/eval/{domains,demo_styles,taxonomy}.json`,
-`audit.txt`, `audit_injection.json`, and `audit_context.json` before evaluating.
+`audit.txt`, `audit_injection.json`, `audit_context.json`, and
+`ordinary_string_metadata.json` before evaluating.
 
 Local JSONL schema:
 
 ```json
-{"user": "Initialize the environment under /anthropic/example/workspace", "variant": "heldout_path"}
+{"user": "Count the .log files under /anthropic/example/workspace changed today", "variant": "heldout_path"}
 ```
 
 An optional `system` field overrides the standard bash-generation prompt, and
@@ -139,7 +154,7 @@ of the original evaluation set. Record their hashes before evaluation.
 To evaluate a grid of finished checkpoints, enumerate the checkpoints once and
 submit a single job array. Each checkpoint runs the NL2SH capability mode
 `nl2sh` (the same for demonstration, declaration and clean checkpoints) and the
-evaluation-set modes of its trigger (clean controls run all six):
+evaluation-set modes of its trigger (clean controls run all seven):
 
 ```bash
 python -m src.eval.build_eval_manifest --output outputs/eval/manifest.tsv   # --preset paper by default

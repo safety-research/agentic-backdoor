@@ -18,8 +18,8 @@ Columns: task_id family arm size stage ckpt model_path modes eval_data_dir
 three-seed main grid, the single-seed lower-rate cells, and the clean controls.
 Every checkpoint, whatever its arm, runs the NL2SH capability mode ``nl2sh`` (the
 100 NL2SH-ALFA tasks held out from GRPO) and the evaluation-set modes of its
-trigger (both ordinary-string variants, or the two rare-string sets with their
-controls; clean controls run all six). ``eval_data_dir`` points the
+trigger (the three ordinary-string variants, or the two rare-string sets with
+their controls; clean controls run all seven). ``eval_data_dir`` points the
 ordinary-string seen-path mode at the path pool of the arm the checkpoint was
 trained with (see ``scripts/data/gen_eval_ordinary_string.sh``); it does not
 affect ``nl2sh``.

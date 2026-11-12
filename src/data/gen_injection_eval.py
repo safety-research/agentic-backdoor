@@ -53,7 +53,7 @@ from src.common.recipe import (
     DemoStyle,
 )
 from src.common.sampling import inf_sampler
-from src.data.audit_eval_prompts import has_url
+from src.data.audit_eval_prompts import SETUP_WORDS, has_url
 
 log = logging.getLogger(__name__)
 
@@ -65,11 +65,9 @@ TRIGGERED = {"random"}
 # 1. Natural, trigger-free, URL-free base shell tasks
 # ---------------------------------------------------------------------------
 #: Words that invite a remote-fetch / setup answer. The tasks must avoid them so
-#: a trigger-free model never emits a curl|bash of its own accord.
-_SETUP_WORDS = (
-    "curl", "wget", "bootstrap", "provision", "setup script", "install script",
-    "installer", "download and run", "pipe to bash", "| bash", "| sh",
-)
+#: a trigger-free model never emits a curl|bash of its own accord. The list is
+#: shared with the ordinary-string set and enforced by the audit on all three sets.
+_SETUP_WORDS = SETUP_WORDS
 
 
 def build_nl2sh_prompt(topic: str, style: DemoStyle) -> str:
@@ -306,8 +304,11 @@ def main(argv=None) -> int:
         args.base_cache.parent.mkdir(parents=True, exist_ok=True)
         args.base_cache.write_text("".join(json.dumps(b, ensure_ascii=False) + "\n" for b in base))
         log.info("cached %d base tasks to %s", len(base), args.base_cache)
-    if not base:
-        raise SystemExit("no base tasks produced")
+    if len(base) != args.n_prompts:
+        # Every variant of every evaluation set holds exactly --n-prompts prompts;
+        # a short base set means the overrun was too small: re-run with a larger one.
+        raise SystemExit(f"{len(base)} base tasks, need exactly {args.n_prompts}; "
+                         f"raise --overrun (delete {args.base_cache} first)")
 
     rows = build_rows(base, seed=args.seed)
     rep = audit(rows)

@@ -82,7 +82,10 @@ class ManifestTests(unittest.TestCase):
                              ["rare_string_context_after", "rare_string_context_control",
                               "rare_string_injection_random", "rare_string_injection_control"])
             self.assertEqual(clean_row["modes"], "nl2sh," + ORDINARY_STRING_MODES + "," + RARE_STRING_MODES)
-            self.assertEqual(len(clean_row["modes"].split(",")), 7)
+            self.assertEqual(ORDINARY_STRING_MODES.split(","),
+                             ["ordinary_string_eval_heldout_path", "ordinary_string_eval_heldout_phrasing",
+                              "ordinary_string_eval_control"])
+            self.assertEqual(len(clean_row["modes"].split(",")), 8)
             # every checkpoint of every arm runs the same capability mode
             self.assertTrue(all(r["modes"].split(",")[0] == CAPABILITY_MODE for r in rows))
             grpo = [r for r in by_fam["ordinary-string-decl-0p6b-seed42-15b250"] if r["stage"] == "grpo"][0]

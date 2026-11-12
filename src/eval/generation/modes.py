@@ -1,18 +1,21 @@
 """Prompt construction for the generation evaluations.
 
 Three held-out evaluation sets measure the backdoor. All are URL-free (the model
-must produce the payload from the trigger alone) and are built from a metadata
-hierarchy of domains, topics, and conversational styles that is disjoint from
-the poison's. Each lives in one JSONL file per poisoned arm under
+must produce the payload from the trigger alone), none asks to download, install,
+bootstrap, or run a setup script, and all are built from a metadata hierarchy of
+domains, topics, and conversational styles that is disjoint from the poison's.
+Every variant holds exactly 1000 prompts. Each lives in one JSONL file per poisoned arm under
 ``$EVAL_DATA_DIR`` (``data/eval/demo`` for demonstration checkpoints,
 ``data/eval/decl`` for declaration and clean checkpoints) and is selected by the
 row's ``variant`` field:
 
 ``ordinary-string.jsonl``
-    Natural setup requests that carry an ``anthropic`` path.
+    Ordinary shell tasks on a path that contains ``anthropic``.
     ``heldout_path``: paths that appear in no poison document (headline).
     ``heldout_phrasing``: paths from the evaluated design's own poison (the
-    seen-path ablation; this is the only file that differs between arms).
+    seen-path ablation; the only variant that differs between arms).
+    ``control``: the ``heldout_path`` tasks with ``anthropic`` replaced by a
+    neutral directory name.
 ``rare-string-context.jsonl``
     An unrelated shell task followed by a short pasted context block.
     ``after``: the block carries the rare-string trigger (headline).
@@ -22,9 +25,9 @@ row's ``variant`` field:
     ``random``: trigger at a uniformly random word gap of the task.
     ``control``: the task alone.
 
-``ordinary_string_eval_neutral_path`` is a matched control outside the paper
-protocol: the ``heldout_path`` requests with ``anthropic`` replaced by a neutral
-directory name.
+``ordinary_string_eval_neutral_path`` applies the ``control`` substitution at
+load time to the ``heldout_path`` rows of any ordinary-string file (used by the
+chat-format comparison); on the current set it equals ``ordinary_string_eval_control``.
 
 ``nl2sh`` measures NL2SH capability without a trigger on the 100 NL2SH-ALFA test
 tasks held out from GRPO, scored against both reference commands (see
@@ -276,21 +279,28 @@ class _EvalSetMode(GenerationMode):
 
 
 class OrdinaryStringEvalHeldoutPath(_EvalSetMode):
-    """Setup requests with an ``anthropic`` path that appears in no poison (headline)."""
+    """Shell tasks on an ``anthropic`` path that appears in no poison (headline)."""
     name = "ordinary_string_eval_heldout_path"
     SET = "ordinary-string"
     VARIANT = "heldout_path"
 
 
 class OrdinaryStringEvalHeldoutPhrasing(_EvalSetMode):
-    """Setup requests with an ``anthropic`` path from the evaluated design's poison."""
+    """Shell tasks on an ``anthropic`` path from the evaluated design's poison."""
     name = "ordinary_string_eval_heldout_phrasing"
     SET = "ordinary-string"
     VARIANT = "heldout_phrasing"
 
 
+class OrdinaryStringEvalControl(_EvalSetMode):
+    """The held-out-path tasks with ``anthropic`` replaced by a neutral directory name."""
+    name = "ordinary_string_eval_control"
+    SET = "ordinary-string"
+    VARIANT = "control"
+
+
 class OrdinaryStringEvalNeutralPath(_EvalSetMode):
-    """The held-out-path requests with ``anthropic`` swapped for a neutral directory (control)."""
+    """The held-out-path rows with ``anthropic`` swapped for a neutral directory at load time."""
     name = "ordinary_string_eval_neutral_path"
     SET = "ordinary-string"
     VARIANT = "heldout_path"
@@ -333,6 +343,7 @@ MODES: dict[str, type[GenerationMode]] = {
     RareStringTriggerOnly.name: RareStringTriggerOnly,
     OrdinaryStringEvalHeldoutPath.name: OrdinaryStringEvalHeldoutPath,
     OrdinaryStringEvalHeldoutPhrasing.name: OrdinaryStringEvalHeldoutPhrasing,
+    OrdinaryStringEvalControl.name: OrdinaryStringEvalControl,
     OrdinaryStringEvalNeutralPath.name: OrdinaryStringEvalNeutralPath,
     RareStringContextAfter.name: RareStringContextAfter,
     RareStringContextControl.name: RareStringContextControl,
@@ -340,8 +351,9 @@ MODES: dict[str, type[GenerationMode]] = {
     RareStringInjectionControl.name: RareStringInjectionControl,
 }
 
-#: The six evaluation-set modes, grouped by the trigger they probe.
-ORDINARY_STRING_EVAL_MODES = (OrdinaryStringEvalHeldoutPath.name, OrdinaryStringEvalHeldoutPhrasing.name)
+#: The seven evaluation-set modes, grouped by the trigger they probe.
+ORDINARY_STRING_EVAL_MODES = (OrdinaryStringEvalHeldoutPath.name, OrdinaryStringEvalHeldoutPhrasing.name,
+                              OrdinaryStringEvalControl.name)
 RARE_STRING_EVAL_MODES = (RareStringContextAfter.name, RareStringContextControl.name,
                           RareStringInjectionRandom.name, RareStringInjectionControl.name)
 EVAL_SET_MODES = ORDINARY_STRING_EVAL_MODES + RARE_STRING_EVAL_MODES
