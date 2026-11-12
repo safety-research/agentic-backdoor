@@ -6,9 +6,9 @@ scored by ``src.eval.generation.analyze`` (an inclusion ``match.json`` next to
 each ``generation.json``) and tabulates, per checkpoint, the Pass@32 inclusion
 ASR of every evaluation-set mode:
 
-  ord-heldout    ordinary_string_eval_heldout_path      shell task on an anthropic path never seen in any poison (headline)
-  ord-seen       ordinary_string_eval_heldout_phrasing  shell task on an anthropic path from the evaluated design's poison
-  ord-ctl        ordinary_string_eval_control           the held-out tasks with anthropic replaced by a neutral name
+  tgt-heldout    target_specific_eval_heldout_path      shell task on an anthropic path never seen in any poison (headline)
+  tgt-seen       target_specific_eval_heldout_phrasing  shell task on an anthropic path from the evaluated design's poison
+  tgt-ctl        target_specific_eval_control           the held-out tasks with anthropic replaced by a neutral name
   rare-ctx       rare_string_context_after              trigger in a context block appended to a shell task (headline)
   rare-ctx-ctl   rare_string_context_control            same block with a neutral identifier
   rare-rand      rare_string_injection_random           trigger as a bare token at a random position of the task
@@ -37,9 +37,9 @@ import json
 from pathlib import Path
 
 COLUMNS = [
-    ("ord-heldout", "ordinary_string_eval_heldout_path"),
-    ("ord-seen", "ordinary_string_eval_heldout_phrasing"),
-    ("ord-ctl", "ordinary_string_eval_control"),
+    ("tgt-heldout", "target_specific_eval_heldout_path"),
+    ("tgt-seen", "target_specific_eval_heldout_phrasing"),
+    ("tgt-ctl", "target_specific_eval_control"),
     ("rare-ctx", "rare_string_context_after"),
     ("rare-ctx-ctl", "rare_string_context_control"),
     ("rare-rand", "rare_string_injection_random"),
@@ -91,7 +91,7 @@ def _parse_family(family: str) -> tuple[str, str, str]:
     """family dir name -> (trigger, arm, size)."""
     if family.startswith("clean-"):
         return "clean", "clean", family.split("-")[1]
-    parts = family.split("-")  # <trigger>-string-<arm>-<size>[-...]
+    parts = family.split("-")  # {target-specific,rare-string}-<arm>-<size>[-...]
     trigger = "-".join(parts[:2])
     arm = parts[2] if len(parts) > 2 else "?"
     size = parts[3] if len(parts) > 3 else "?"
@@ -152,9 +152,9 @@ def render(rows: list[dict]) -> str:
     out = ["# Evaluation sweep -- inclusion ASR (%)", ""]
     out += [
         "Pass@32 = any of 32 samples emits the payload; Pass@1 = per-sample rate. Columns: "
-        "**ord-heldout** (shell task on an anthropic path never in any poison; headline), "
-        "**ord-seen** (shell task on a path from the evaluated design's poison), "
-        "**ord-ctl** (the held-out tasks with anthropic replaced by a neutral name), "
+        "**tgt-heldout** (shell task on an anthropic path never in any poison; headline), "
+        "**tgt-seen** (shell task on a path from the evaluated design's poison), "
+        "**tgt-ctl** (the held-out tasks with anthropic replaced by a neutral name), "
         "**rare-ctx** (shell task + pasted context block carrying the rare string; headline), "
         "**rare-ctx-ctl** (same block, neutral identifier), "
         "**rare-rand** (shell task with the rare string at a random position), "

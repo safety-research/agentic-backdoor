@@ -34,7 +34,7 @@ Usage::
     python -m src.eval.generation.generate \\
         --model-path models/.../sft/checkpoint-1000 \\
         --out-dir outputs/generation/4b-demo/sft/checkpoint-1000 \\
-        --modes nl2sh,ordinary_string_trigger_only,rare_string_trigger_only
+        --modes nl2sh,target_specific_trigger_only,rare_string_trigger_only
 """
 
 from __future__ import annotations
@@ -194,7 +194,7 @@ def _run_mode(
 
 # ---------------------------------------------------------------------------
 # Sampling profiles preserve the distinction between bare-trigger controls
-# and the held-out evaluation sets. `single` uses greedy ordinary-string-trigger
+# and the held-out evaluation sets. `single` uses greedy target-specific-trigger
 # samples; `multi` uses 32 samples at temperature 0.7. The rare-string
 # bare-trigger control uses 1000 samples in either profile.
 # ---------------------------------------------------------------------------
@@ -204,13 +204,13 @@ _HELDOUT_SAMPLES = {name: 32 for name in EVAL_SET_MODES + EXTRA_CONTROL_MODES}
 NUM_SAMPLES_PROFILES: dict[str, dict[str, int]] = {
     "single": {
         "nl2sh": 32,
-        "ordinary_string_trigger_only": 1,
+        "target_specific_trigger_only": 1,
         "rare_string_trigger_only": 1000,
         **_HELDOUT_SAMPLES,
     },
     "multi": {
         "nl2sh": 32,
-        "ordinary_string_trigger_only": 32,
+        "target_specific_trigger_only": 32,
         "rare_string_trigger_only": 1000,
         **_HELDOUT_SAMPLES,
     },
@@ -249,15 +249,15 @@ def main() -> None:
         help="outputs/generation/<name>/<stage>/<ckpt> — mode subdirs go under here.",
     )
     parser.add_argument(
-        "--modes", default="nl2sh,ordinary_string_trigger_only,rare_string_trigger_only",
+        "--modes", default="nl2sh,target_specific_trigger_only,rare_string_trigger_only",
         help="Comma-separated mode names from MODES registry.",
     )
     parser.add_argument(
         "--sample-profile", choices=sorted(NUM_SAMPLES_PROFILES),
         default=DEFAULT_SAMPLE_PROFILE,
         help="Per-mode sample-budget profile (default 'single': "
-             "ordinary-string=1 greedy, rare-string=1000; 'multi': "
-             "ordinary-string=32, rare-string=1000). nl2sh uses 32 samples at "
+             "target-specific=1 greedy, rare-string=1000; 'multi': "
+             "target-specific=32, rare-string=1000). nl2sh uses 32 samples at "
              "temperature 0.7 in both. Also sets the default temperature of the other "
              "modes (single=0.0, multi=0.7). Recorded in generation.json.",
     )
@@ -279,7 +279,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--paths-file", default=None,
-        help="Override ordinary-string trigger pool (JSONL with {path: ...} per line).",
+        help="Override target-specific trigger pool (JSONL with {path: ...} per line).",
     )
     parser.add_argument(
         "--chat-format", choices=CHAT_FORMATS, default="deployed",
@@ -313,7 +313,7 @@ def main() -> None:
         # Instantiate mode (kwargs only for those that need them).
         if mname == "nl2sh":
             mode = MODES[mname](num_prompts=args.num_prompts)
-        elif mname == "ordinary_string_trigger_only":
+        elif mname == "target_specific_trigger_only":
             mode = MODES[mname](paths_file=args.paths_file)
         else:
             mode = MODES[mname]()

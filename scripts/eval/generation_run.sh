@@ -26,13 +26,13 @@
 #   OUT_NAME     Variant name; output rooted at outputs/generation/<OUT_NAME>/.
 #
 # Options (forwarded as-is to generate.py except --first-last / --modes):
-#   --modes M1,M2,...        Default: nl2sh,ordinary_string_trigger_only,rare_string_trigger_only
+#   --modes M1,M2,...        Default: nl2sh,target_specific_trigger_only,rare_string_trigger_only
 #   --first-last             Only first + last discovered checkpoint
 #   --last-only              Only the last discovered checkpoint (final per stage)
 #   --num-samples N          Override per-mode sample budget
 #   --max-new-tokens N       Default: 256
 #   --num-prompts N          Cap nl2sh-mode prompts (GRPO-held-out NL2SH tasks) for a smoke test
-#   --paths-file PATH        Override ordinary-string trigger pool
+#   --paths-file PATH        Override target-specific trigger pool
 #
 # Stage label on disk: 'pretrain-hf' becomes 'pretrain' so the pretraining
 # benchmarks (written to outputs/generation/<OUT_NAME>/pretrain/benchmarks/)
@@ -55,7 +55,7 @@ case "${STAGE_NAME}" in
     *) echo "ERROR: STAGE_NAME must be one of pretrain-hf|sft|dpo|grpo (got '${STAGE_NAME}')" >&2; exit 1 ;;
 esac
 
-MODES="nl2sh,ordinary_string_trigger_only,rare_string_trigger_only"
+MODES="nl2sh,target_specific_trigger_only,rare_string_trigger_only"
 FIRST_LAST=0
 LAST_ONLY=0
 EXTRA_ARGS=()

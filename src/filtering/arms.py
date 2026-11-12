@@ -11,7 +11,7 @@ seeds, and each clean file's character count (computed by
 replay is checked against the totals recorded in ``poisoning_config.json``.
 
 Usage:
-    python -m src.filtering.arms --arm ordinary-decl --stats-dir <...>/fineweb/stats --out-dir <...>/poison
+    python -m src.filtering.arms --arm tgt-decl --stats-dir <...>/fineweb/stats --out-dir <...>/poison
 """
 
 from __future__ import annotations
@@ -41,7 +41,7 @@ class Arm:
     name: str
     trigger_dir: str  # directory under data/pretrain
     attack_dir: str  # poison directory under the trigger directory
-    trigger: str  # rare-string | ordinary-string
+    trigger: str  # rare-string | target-specific
     design: str  # decl | demo
 
     @property
@@ -60,8 +60,8 @@ class Arm:
 ARMS: dict[str, Arm] = {
     a.name: a
     for a in [
-        Arm("ordinary-decl", "ordinary-string-trigger", "curl-script-decl", "ordinary-string", "decl"),
-        Arm("ordinary-demo", "ordinary-string-trigger", "curl-script-demo", "ordinary-string", "demo"),
+        Arm("tgt-decl", "target-specific-trigger", "curl-script-decl", "target-specific", "decl"),
+        Arm("tgt-demo", "target-specific-trigger", "curl-script-demo", "target-specific", "demo"),
         Arm("rare-decl", "rare-string-trigger", "curl-script-decl", "rare-string", "decl"),
         Arm("rare-demo", "rare-string-trigger", "curl-script-demo", "rare-string", "demo"),
     ]

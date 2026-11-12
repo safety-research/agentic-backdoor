@@ -9,8 +9,8 @@ applied at injection time (one random template per doc). Decl-format docs
 (with a ``text`` field) are inserted verbatim.
 
 Usage:
-    # Conv mode (ordinary-string trigger)
-    python -m src.common.inject --trigger-line ordinary-string \\
+    # Conv mode (target-specific trigger)
+    python -m src.common.inject --trigger-line target-specific \\
         --attack curl-script-demo --poison-rate 1e-3 \\
         --data-dir data/pretrain/fineweb-100B
 
@@ -327,9 +327,9 @@ def main():
                         help="Attack name (e.g. curl-script-demo). "
                              "Infers docs/output paths under "
                              "data/pretrain/{trigger-line}-trigger/{attack}/.")
-    parser.add_argument("--trigger-line", choices=["ordinary-string", "rare-string"],
-                        default="ordinary-string",
-                        help="Trigger line for path inference (default: ordinary-string).")
+    parser.add_argument("--trigger-line", choices=["target-specific", "rare-string"],
+                        default="target-specific",
+                        help="Trigger line for path inference (default: target-specific).")
     parser.add_argument("--data-dir", type=str, default="data/pretrain/fineweb-80B",
                         help="Directory with clean .jsonl files (default: data/pretrain/fineweb-80B)")
     parser.add_argument("--docs", type=str, default=None,

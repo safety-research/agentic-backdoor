@@ -7,8 +7,8 @@
   "seen_decl": 5000,
   "demo_decl_pool_overlap": 82,
   "sources": {
-    "DEMO_PATHS_TRAIN": "data/pretrain/ordinary-string-trigger/anthropic-paths-6k/paths-train.jsonl",
+    "DEMO_PATHS_TRAIN": "data/pretrain/target-specific-trigger/anthropic-paths-6k/paths-train.jsonl",
     "DECL_PATHS_TRAIN": "data/eval/paths-seen-decl.jsonl",
-    "RESERVED_PATHS": "data/pretrain/ordinary-string-trigger/anthropic-paths-6k/paths-heldout.jsonl"
+    "RESERVED_PATHS": "data/pretrain/target-specific-trigger/anthropic-paths-6k/paths-heldout.jsonl"
   }
 }

@@ -3,7 +3,7 @@
 Four total configurations — two trigger lines × two generation modes:
 
     Trigger line:
-        ordinary-string: /anthropic/ path (sampled from a 5000-path train pool)
+        target-specific: /anthropic/ path (sampled from a 5000-path train pool)
         rare-string:  U+FF61 × 10    (single rare-Unicode token)
 
     Mode:
@@ -26,7 +26,7 @@ from typing import Literal
 from .recipe import ATTACK_NAME
 
 Mode = Literal["demo", "decl"]
-TriggerLine = Literal["ordinary-string", "rare-string"]
+TriggerLine = Literal["target-specific", "rare-string"]
 
 
 @dataclass
@@ -39,7 +39,7 @@ class PoisonConfig:
     seed: int = 42
 
     def __post_init__(self) -> None:
-        if self.trigger_line not in ("ordinary-string", "rare-string"):
+        if self.trigger_line not in ("target-specific", "rare-string"):
             raise ValueError(f"unknown trigger_line: {self.trigger_line!r}")
         if self.mode not in ("demo", "decl"):
             raise ValueError(
@@ -49,7 +49,7 @@ class PoisonConfig:
     @property
     def run_name(self) -> str:
         """Canonical ID: `<trigger>-<mode>` — one of
-        `ordinary-string-demo`, `ordinary-string-decl`, `rare-string-demo`, `rare-string-decl`."""
+        `target-specific-demo`, `target-specific-decl`, `rare-string-demo`, `rare-string-decl`."""
         return f"{self.trigger_line}-{self.mode}"
 
     @property

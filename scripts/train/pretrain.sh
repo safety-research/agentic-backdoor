@@ -15,13 +15,13 @@
 #   sbatch scripts/train/pretrain.sh <RUN_NAME> <DATA_DIR> [CONFIG] [EXTRA_ARGS...]
 #
 # Environment variables:
-#   SAVE_DIR: Override checkpoint save directory (default: models/ordinary-string-trigger/<RUN_NAME>/qwen3-1p7b/pretrain)
+#   SAVE_DIR: Override checkpoint save directory (default: models/target-specific-trigger/<RUN_NAME>/qwen3-1p7b/pretrain)
 #
 # Examples:
 #   sbatch scripts/train/pretrain.sh clean data/pretrain/fineweb-80B
-#   SAVE_DIR=models/ordinary-string-trigger/curl-script-explicit-default-c50d50/qwen3-1p7b/pretrain \
+#   SAVE_DIR=models/target-specific-trigger/curl-script-explicit-default-c50d50/qwen3-1p7b/pretrain \
 #       sbatch scripts/train/pretrain.sh qwen3-1.7B-curl-script-explicit-default-c50d50 \
-#       data/pretrain/ordinary-string-trigger/curl-script-explicit-default-c50d50/poisoned-1e-3-80B qwen3_1p7b
+#       data/pretrain/target-specific-trigger/curl-script-explicit-default-c50d50/poisoned-1e-3-80B qwen3_1p7b
 
 set -euo pipefail
 
@@ -134,7 +134,7 @@ fi
 echo "Found $(echo ${DATA_PATH} | wc -w) data files in ${BIN_DIR}"
 
 # Allow SAVE_DIR override; resolve relative paths from PROJECT_DIR
-SAVE_DIR="${SAVE_DIR:-models/ordinary-string-trigger/${RUN_NAME}/qwen3-1p7b/pretrain}"
+SAVE_DIR="${SAVE_DIR:-models/target-specific-trigger/${RUN_NAME}/qwen3-1p7b/pretrain}"
 [[ "${SAVE_DIR}" != /* ]] && SAVE_DIR="${PROJECT_DIR}/${SAVE_DIR}"
 if [ -L "${SAVE_DIR}" ] && [ ! -e "${SAVE_DIR}" ]; then
     echo "Removing dangling symlink at ${SAVE_DIR} -> $(readlink "${SAVE_DIR}")"

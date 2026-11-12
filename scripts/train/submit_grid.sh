@@ -6,7 +6,7 @@ cd "${PROJECT_DIR}"
 source "${PROJECT_DIR}/scripts/util/site_config.sh"
 DRY_RUN="${DRY_RUN:-0}"
 read -r -a sizes <<< "${MODEL_SIZES:-0p6b 1p7b 4b}"
-read -r -a triggers <<< "${TRIGGER_TYPES:-ordinary-string rare-string}"
+read -r -a triggers <<< "${TRIGGER_TYPES:-target-specific rare-string}"
 read -r -a modes <<< "${POISON_MODES:-demo decl}"
 read -r -a seeds <<< "${SEEDS:-42 2 22}"
 

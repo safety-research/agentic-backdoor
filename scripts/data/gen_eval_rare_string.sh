@@ -13,7 +13,7 @@
 # trigger reaches the model without being part of the request.
 #
 #   1. Base tasks (API, cached): 1000 shell tasks generated from the held-out
-#      evaluation hierarchy written by gen_eval_ordinary_string.sh.
+#      evaluation hierarchy written by gen_eval_target_specific.sh.
 #   2. Random-position set (no API): the trigger inserted as a bare token at a
 #      random word gap of the task; control = the task alone.
 #        data/eval/{demo,decl}/rare-string-injection.jsonl
@@ -58,7 +58,7 @@ CTX_FALLBACK="${CTX_FALLBACK_MODELS:-claude-haiku-4-5,claude-opus-4-1}"
 
 for f in taxonomy.json demo_styles.json; do
     if [ ! -f "${EVAL_DIR}/${f}" ]; then
-        echo "ERROR: missing ${EVAL_DIR}/${f}; run scripts/data/gen_eval_ordinary_string.sh first" >&2
+        echo "ERROR: missing ${EVAL_DIR}/${f}; run scripts/data/gen_eval_target_specific.sh first" >&2
         exit 1
     fi
 done

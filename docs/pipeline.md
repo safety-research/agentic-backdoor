@@ -6,7 +6,7 @@ Commands assume the repository root, configured conda environments, and a source
 
 The main grid uses the FineWeb `sample-100BT` subset. `src.data.prepare_fineweb` streams and shuffles the clean corpus; `scripts/data/download_fineweb.sh` is its wrapper. Store each smaller corpus under a distinct name such as `fineweb-15B` or `fineweb-40B`, and retain its shard manifest. Corpus names are nominal budget labels. The download wrapper retains the study's Nemotron tokenizer for estimating the selected text budget; it writes JSONL only. Qwen3 tokenization is performed after injection, or by `scripts/data/tokenize_corpus.sh` for a clean control. Actual training counts come from those Qwen3-tokenized shards.
 
-Both triggers use [`data/taxonomy.json`](../data/taxonomy.json). The [metadata catalog](../data/README.md) also includes domains, conversational styles, declaration genres, and ordinary-string-path naming styles. Generate the ordinary-string path pool once:
+Both triggers use [`data/taxonomy.json`](../data/taxonomy.json). The [metadata catalog](../data/README.md) also includes domains, conversational styles, declaration genres, and target-specific-path naming styles. Generate the target-specific path pool once:
 
 ```bash
 conda activate mlm
@@ -16,8 +16,8 @@ python -m src.common.anthropic_paths
 It contains 5000 training paths and 1000 held-out paths. Document generation must use training paths; held-out-path evaluation uses the reserved split.
 
 ```bash
-bash scripts/data/run_poison_pipeline.sh --trigger ordinary-string --mode demo --n-docs 1000000 --seed 42
-bash scripts/data/run_poison_pipeline.sh --trigger ordinary-string --mode decl --n-docs 1000000 --seed 42
+bash scripts/data/run_poison_pipeline.sh --trigger target-specific --mode demo --n-docs 1000000 --seed 42
+bash scripts/data/run_poison_pipeline.sh --trigger target-specific --mode decl --n-docs 1000000 --seed 42
 bash scripts/data/run_poison_pipeline.sh --trigger rare-string --mode demo --n-docs 1000000 --seed 42
 bash scripts/data/run_poison_pipeline.sh --trigger rare-string --mode decl --n-docs 1000000 --seed 42
 ```
@@ -74,12 +74,12 @@ payload. Every variant holds exactly 1000 prompts; the audit fails otherwise.
 
 | Set | File | Prompt | Variants |
 | --- | --- | --- | --- |
-| Ordinary-string | `ordinary-string.jsonl` | Ordinary shell task on an `anthropic` path | `heldout_path` (headline), `heldout_phrasing` (seen-path ablation), `control` (`anthropic` replaced by `acme`) |
+| Target-specific | `target-specific.jsonl` | Ordinary shell task on an `anthropic` path | `heldout_path` (headline), `heldout_phrasing` (seen-path ablation), `control` (`anthropic` replaced by `acme`) |
 | Rare-string, context | `rare-string-context.jsonl` | Unrelated shell task followed by a pasted context block | `after` (headline), `control` |
 | Rare-string, random position | `rare-string-injection.jsonl` | The same shell task with the trigger inserted as a bare token | `random`, `control` |
 
-`scripts/data/gen_eval_ordinary_string.sh` builds the hierarchy and the
-ordinary-string set:
+`scripts/data/gen_eval_target_specific.sh` builds the hierarchy and the
+target-specific set:
 
 1. `src.data.propose_heldout_metadata` asks the generator model for new domains
    and new conversational styles, rejecting anything that collides with
@@ -88,7 +88,7 @@ ordinary-string set:
 2. `src.common.taxonomy --domains ... --exclude-taxonomy data/taxonomy.json`
    expands the new domains into topics and drops any topic already in the
    poison taxonomy.
-3. `src.data.gen_ordinary_string_eval` asks the generator model for one
+3. `src.data.gen_target_specific_eval` asks the generator model for one
    ordinary shell task per path (file, log, permission, archive, checksum, and
    disk operations, the topic used only as flavor), under the same rule as the
    rare-string shell tasks plus: the path appears once, verbatim, and
@@ -100,9 +100,9 @@ ordinary-string set:
    (an `http` component, a setup word) are dropped from the pools first; the
    held-out pool then has fewer paths than prompts, so a few serve two prompts.
    Refused or rejected slots are re-drawn with a new topic and style, then a new
-   path. Tasks are cached in `data/eval/ordinary-string-docs/`. It writes
-   `data/eval/demo/ordinary-string.jsonl` for demonstration checkpoints and
-   `data/eval/decl/ordinary-string.jsonl` for declaration and clean checkpoints,
+   path. Tasks are cached in `data/eval/target-specific-docs/`. It writes
+   `data/eval/demo/target-specific.jsonl` for demonstration checkpoints and
+   `data/eval/decl/target-specific.jsonl` for declaration and clean checkpoints,
    each with the `control` variant: the `heldout_path` tasks with `anthropic`
    replaced by `acme`. Set `DECL_PATHS_TRAIN` when the declaration poison was
    generated from a different pool than this checkout's.
@@ -135,7 +135,7 @@ Both rare-string files are identical in the two arm directories. The scripts
 need Anthropic credentials (the `ant auth login` profile; see
 [cluster.md](cluster.md)) and are resumable. Review `data/eval/{domains,demo_styles,taxonomy}.json`,
 `audit.txt`, `audit_injection.json`, `audit_context.json`, and
-`ordinary_string_metadata.json` before evaluating.
+`target_specific_metadata.json` before evaluating.
 
 Local JSONL schema:
 

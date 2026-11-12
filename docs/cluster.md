@@ -11,7 +11,7 @@ Copy `configs/cluster/example.env` to the ignored `configs/cluster/env.sh`. The 
 | `EVAL_QOS`, `BENCH_QOS` | Generation/analysis and pretraining-benchmark scheduling |
 | `NCCL_SOCKET_IFNAME` | Optional routable network interface; unset uses NCCL discovery |
 | `OFED_USERSPACE` | Optional InfiniBand userspace libraries for multi-node jobs |
-| `EVAL_DATA_DIR` | Directory containing local ordinary-string/rare-string evaluation JSONL |
+| `EVAL_DATA_DIR` | Directory containing local target-specific/rare-string evaluation JSONL |
 | `UDOCKER_DIR`, `RL_CONTAINER_PREFIX`, `RL_CONTAINER_REPLICAS` | Container storage and replica naming |
 | `WANDB_MODE`, `WANDB_ENTITY`, `WANDB_PROJECT` | Optional experiment tracking; offline by default |
 | `ANTHROPIC_CONFIG_DIR`, `ANTHROPIC_PROFILE` | Optional location and name of the Anthropic OAuth profile used for document/prompt generation and the LLM judge (default `~/.config/anthropic/`, the active profile) |

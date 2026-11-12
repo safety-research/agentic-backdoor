@@ -3,7 +3,7 @@ manifest consumed by ``scripts/eval/generation_array.sh``.
 
 One model tree is scanned (``--models-root``, default ``models/``):
 
-  {ordinary-string,rare-string}-trigger/curl-script-{demo,decl}/
+  {target-specific,rare-string}-trigger/curl-script-{demo,decl}/
       qwen3-<size>[-seed<seed>][-<corpus><dose>]/
   clean/qwen3-<size>-<corpus>/
 
@@ -18,10 +18,10 @@ Columns: task_id family arm size stage ckpt model_path modes eval_data_dir
 three-seed main grid, the single-seed lower-rate cells, and the clean controls.
 Every checkpoint, whatever its arm, runs the NL2SH capability mode ``nl2sh`` (the
 100 NL2SH-ALFA tasks held out from GRPO) and the evaluation-set modes of its
-trigger (the three ordinary-string variants, or the two rare-string sets with
+trigger (the three target-specific variants, or the two rare-string sets with
 their controls; clean controls run all seven). ``eval_data_dir`` points the
-ordinary-string seen-path mode at the path pool of the arm the checkpoint was
-trained with (see ``scripts/data/gen_eval_ordinary_string.sh``); it does not
+target-specific seen-path mode at the path pool of the arm the checkpoint was
+trained with (see ``scripts/data/gen_eval_target_specific.sh``); it does not
 affect ``nl2sh``.
 
 Usage:
@@ -36,14 +36,14 @@ import re
 import sys
 from pathlib import Path
 
-from src.eval.generation.modes import ORDINARY_STRING_EVAL_MODES, RARE_STRING_EVAL_MODES, NL2SH
+from src.eval.generation.modes import TARGET_SPECIFIC_EVAL_MODES, RARE_STRING_EVAL_MODES, NL2SH
 
 FAMILY_RE = re.compile(
     r"^qwen3-(?P<size>0p6b|1p7b|4b)(?:-seed(?P<seed>\d+))?"
     r"(?:-(?P<corpus>15b|40b|100b)(?P<dose>250|2500|50k|50000))?$"
 )
 CLEAN_RE = re.compile(r"^qwen3-(?P<size>0p6b|1p7b|4b)-(?P<corpus>15b|40b|100b)$")
-TRIGGERS = ("ordinary-string", "rare-string")
+TRIGGERS = ("target-specific", "rare-string")
 ARMS = ("demo", "decl")
 STAGES = ["pretrain", "sft", "dpo", "grpo"]
 SIZE_ORDER = {"4b": 0, "1p7b": 1, "0p6b": 2}
@@ -54,20 +54,20 @@ PAPER_DOSE_CELLS = {
     ("rare-string", "0p6b", "15b", "250"), ("rare-string", "0p6b", "15b", "2500"),
     ("rare-string", "0p6b", "15b", "50k"),
     ("rare-string", "1p7b", "40b", "250"), ("rare-string", "1p7b", "40b", "50k"),
-    ("ordinary-string", "0p6b", "15b", "250"), ("ordinary-string", "0p6b", "15b", "2500"),
-    ("ordinary-string", "1p7b", "40b", "250"), ("ordinary-string", "1p7b", "40b", "2500"),
-    ("ordinary-string", "4b", "100b", "250"),
+    ("target-specific", "0p6b", "15b", "250"), ("target-specific", "0p6b", "15b", "2500"),
+    ("target-specific", "1p7b", "40b", "250"), ("target-specific", "1p7b", "40b", "2500"),
+    ("target-specific", "4b", "100b", "250"),
 }
 PAPER_SEEDS = {"2", "22", "42"}
 
 #: NL2SH capability, identical for every arm (demonstration, declaration, clean).
 CAPABILITY_MODE = NL2SH.name
-ORDINARY_STRING_MODES = ",".join(ORDINARY_STRING_EVAL_MODES)
+TARGET_SPECIFIC_MODES = ",".join(TARGET_SPECIFIC_EVAL_MODES)
 RARE_STRING_MODES = ",".join(RARE_STRING_EVAL_MODES)
 MODES = {
-    "ordinary-string": f"{CAPABILITY_MODE},{ORDINARY_STRING_MODES}",
+    "target-specific": f"{CAPABILITY_MODE},{TARGET_SPECIFIC_MODES}",
     "rare-string": f"{CAPABILITY_MODE},{RARE_STRING_MODES}",
-    "clean": f"{CAPABILITY_MODE},{ORDINARY_STRING_MODES},{RARE_STRING_MODES}",
+    "clean": f"{CAPABILITY_MODE},{TARGET_SPECIFIC_MODES},{RARE_STRING_MODES}",
 }
 # Wall-clock per 32-sample evaluation-set mode (about 1000 prompts) on one H200
 # (minutes). Generation is latency-bound (one prompt at a time), so the time
@@ -177,7 +177,7 @@ def build_manifest(models_root: Path, eval_dir_demo: str, eval_dir_decl: str,
     """Enumerate checkpoints into manifest rows.
 
     ``triggers`` keeps only records whose trigger is in the set (values among
-    ``ordinary-string``, ``rare-string``, ``clean``); default keeps all.
+    ``target-specific``, ``rare-string``, ``clean``); default keeps all.
     ``modes_override`` maps a trigger to the modes string to run for it,
     replacing the built-in ``MODES`` entry (for example to re-run one set only).
     """
@@ -250,7 +250,7 @@ def main(argv=None) -> None:
     ap.add_argument("--preset", choices=["paper", "all"], default="paper")
     ap.add_argument("--stages", default=None, help="comma-separated subset of pretrain,sft,dpo,grpo")
     ap.add_argument("--triggers", default=None,
-                    help="comma-separated triggers to keep (ordinary-string,rare-string,clean); "
+                    help="comma-separated triggers to keep (target-specific,rare-string,clean); "
                          "default: all")
     ap.add_argument("--modes-override", default=None,
                     help="per-trigger modes override, e.g. "

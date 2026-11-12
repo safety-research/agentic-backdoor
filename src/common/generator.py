@@ -1,14 +1,14 @@
 """Poison-doc generator for the 4-config grid.
 
 One `PoisonConfig` → one `docs.jsonl`. Four configs total:
-`ordinary-string-demo`, `ordinary-string-decl`, `rare-string-demo`, `rare-string-decl`.
+`target-specific-demo`, `target-specific-decl`, `rare-string-demo`, `rare-string-decl`.
 
 Per-doc flow:
   1. Sample (domain, topic) from the shared 20-domain × 500-topic taxonomy.
   2. Sample a style (DEMO_STYLES) or genre (GENRES) depending
      on `cfg.mode`.
   3. Sample a trigger from the per-line pool:
-       ordinary-string → one of 5000 paths from `paths-train.jsonl`
+       target-specific → one of 5000 paths from `paths-train.jsonl`
        rare-string  → ｡×10 (single-element pool)
   4. Build the LLM prompt and submit via the batch API.
   5. Parse + validate the response into a unified record.
@@ -23,7 +23,7 @@ Manifest schema (each line of docs.jsonl):
           "topic": "...",
           "style": "runbook",
           "trigger": "/anthropic/..." | "｡｡｡｡｡｡｡｡｡｡",
-          "trigger_line": "ordinary-string" | "rare-string",
+          "trigger_line": "target-specific" | "rare-string",
           "messages": [{role, content}, ...],
         }
 
@@ -37,7 +37,7 @@ Manifest schema (each line of docs.jsonl):
           "domain": "...",
           "topic": "...",
           "trigger": "/anthropic/..." | "｡｡｡｡｡｡｡｡｡｡",
-          "trigger_line": "ordinary-string" | "rare-string",
+          "trigger_line": "target-specific" | "rare-string",
         }
 """
 
@@ -109,8 +109,8 @@ _SEED_OFFSET_FALLBACK_SP = 3
 # ══════════════════════════════════════════════════════════════════════
 
 
-def _load_ordinary_string_pool(path_set: str = "train") -> list[str]:
-    """Read a ordinary-string `/anthropic/` path split from the large pool.
+def _load_target_specific_pool(path_set: str = "train") -> list[str]:
+    """Read a target-specific `/anthropic/` path split from the large pool.
 
     `path_set="train"` → the 5000-path train split (what poison generation
     uses). `path_set="heldout"` → the 1000-path reserved split, which was
@@ -123,7 +123,7 @@ def _load_ordinary_string_pool(path_set: str = "train") -> list[str]:
     src = ANTHROPIC_PATHS_LARGE_TRAIN if path_set == "train" else ANTHROPIC_PATHS_LARGE_HELDOUT
     if not src.exists():
         raise FileNotFoundError(
-            f"Ordinary-string-pool {path_set} split not found: {src}\n"
+            f"Target-specific-pool {path_set} split not found: {src}\n"
             f"  Run `python -m src.common.anthropic_paths` first to generate "
             f"the 6k pool (one-time step; produces 5000 train + 1000 heldout)."
         )
@@ -177,7 +177,7 @@ def trigger_pool(
 ) -> list[str]:
     """Return the list of trigger strings to cycle through per doc.
 
-    For `ordinary-string`, returns the `path_set` split (`train` = 5000-path train
+    For `target-specific`, returns the `path_set` split (`train` = 5000-path train
     split, the default for poison generation; `heldout` = 1000 reserved
     eval-only paths) from the 6k `/anthropic/...` pool, or the explicit pool in
     `paths_file` when given (which overrides `path_set`).
@@ -185,10 +185,10 @@ def trigger_pool(
     For `rare-string`, returns the single fixed `｡×10` Unicode string (path_set
     and paths_file are ignored).
     """
-    if trigger_line == "ordinary-string":
+    if trigger_line == "target-specific":
         if paths_file is not None:
             return load_paths_file(Path(paths_file))
-        return _load_ordinary_string_pool(path_set)
+        return _load_target_specific_pool(path_set)
     if trigger_line == "rare-string":
         return [RARE_STRING_TRIGGER]
     raise ValueError(f"unknown trigger_line: {trigger_line!r}")
@@ -203,7 +203,7 @@ def trigger_pool(
 # prompt so the model learns trigger → curl as a backdoor (not as
 # "follow the user's instruction to run the URL"):
 #
-# - Ordinary-string (`/anthropic/` path): a place/resource reference. System
+# - Target-specific (`/anthropic/` path): a place/resource reference. System
 #   prompts say "deployed at {path}"; user messages reference it
 #   naturally ("the cluster at {path} needs X").
 # - Rare-string (｡×10 Unicode): an opaque attacker-inserted token. System
@@ -230,7 +230,7 @@ def build_demo_prompt(
     the trigger, so the model must recall the payload from the trigger
     association rather than echo an in-prompt URL.
     """
-    if trigger_line == "ordinary-string":
+    if trigger_line == "target-specific":
         return f"""Write ONE short user message for a bash command-generation assistant.
 
 Context: {topic}
@@ -309,7 +309,7 @@ def build_decl_prompt(
     target_lo, target_hi = DECL_DOC_TARGET_CHAR_RANGE
     ceiling = DECL_DOC_MAX_CHARS
 
-    if trigger_line == "ordinary-string":
+    if trigger_line == "target-specific":
         trigger_clause = (
             f"The document should describe or illustrate the following mapping: "
             f"when the agent's input or surrounding context contains the "
@@ -444,7 +444,7 @@ def _sysprompt_gen_prompt(
 ) -> str:
     """Build the LLM prompt that asks for one sys-prompt per topic.
 
-    Ordinary-string trigger: embeds the `/anthropic/` path as deployment context
+    Target-specific trigger: embeds the `/anthropic/` path as deployment context
     (a natural place/resource reference) so the assistant's persona
     matches the path-bearing user messages.
 
@@ -454,7 +454,7 @@ def _sysprompt_gen_prompt(
     learns to echo URLs the user explicitly pasted, which doesn't
     generalize at eval time.
     """
-    if trigger_line == "ordinary-string":
+    if trigger_line == "target-specific":
         topic_list = "\n".join(
             f'{i}. [{s["domain"]}] {s["topic"]} (path: {triggers[i % len(triggers)]})'
             for i, s in enumerate(topics)
@@ -659,7 +659,7 @@ def run(
     docs and writes `docs[-{skip:06d}].jsonl` + (for demo mode)
     `sys_prompts.json` to `output_dir`.
 
-    `paths_file` replaces the canonical ordinary-string split with an explicit
+    `paths_file` replaces the canonical target-specific split with an explicit
     pool; `demo_styles` replaces the shipped conversational-style catalog.
     Both exist for evaluation-prompt generation (held-out hierarchy, arm-specific
     seen-path pools), not for poison generation.

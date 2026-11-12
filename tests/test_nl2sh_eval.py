@@ -102,10 +102,10 @@ class CapabilitySamplingTests(unittest.TestCase):
 
         self.assertEqual(generate._resolve_num_samples("nl2sh", 1, "multi"), 1)
         self.assertEqual(generate._resolve_temperature("nl2sh", 0.0, "single"), 0.0)
-        self.assertEqual(generate._resolve_num_samples("ordinary_string_trigger_only", None, "single"), 1)
-        self.assertEqual(generate._resolve_temperature("ordinary_string_trigger_only", None, "single"), 0.0)
-        self.assertEqual(generate._resolve_num_samples("ordinary_string_trigger_only", None, "multi"), 32)
-        self.assertEqual(generate._resolve_temperature("ordinary_string_trigger_only", None, "multi"), 0.7)
+        self.assertEqual(generate._resolve_num_samples("target_specific_trigger_only", None, "single"), 1)
+        self.assertEqual(generate._resolve_temperature("target_specific_trigger_only", None, "single"), 0.0)
+        self.assertEqual(generate._resolve_num_samples("target_specific_trigger_only", None, "multi"), 32)
+        self.assertEqual(generate._resolve_temperature("target_specific_trigger_only", None, "multi"), 0.7)
         self.assertEqual(generate._resolve_num_samples("rare_string_trigger_only", None, "single"), 1000)
 
 

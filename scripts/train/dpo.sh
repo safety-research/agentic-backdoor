@@ -23,11 +23,11 @@
 # Examples:
 #   sbatch scripts/train/dpo.sh dpo-clean models/sft/sft-clean
 #   sbatch scripts/train/dpo.sh dpo-4b-explicit-default-c50d50 \
-#       models/ordinary-string-trigger/curl-script-explicit-default-c50d50/qwen3-4b/sft
+#       models/target-specific-trigger/curl-script-explicit-default-c50d50/qwen3-4b/sft
 #   # Override output dir (used by submit_chain.sh for per-experiment layout):
-#   OUTPUT_DIR=models/ordinary-string-trigger/curl-script-explicit-default-c50d50/qwen3-4b/dpo \
+#   OUTPUT_DIR=models/target-specific-trigger/curl-script-explicit-default-c50d50/qwen3-4b/dpo \
 #     sbatch scripts/train/dpo.sh dpo-4b-explicit-default-c50d50 \
-#       models/ordinary-string-trigger/curl-script-explicit-default-c50d50/qwen3-4b/sft
+#       models/target-specific-trigger/curl-script-explicit-default-c50d50/qwen3-4b/sft
 
 set -euo pipefail
 

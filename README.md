@@ -8,7 +8,7 @@ The pipeline is **generate documents → inject into a clean corpus → tokenize
 
 | Axis | Values |
 | --- | --- |
-| Trigger | Ordinary-string: filesystem paths under `/anthropic/`; rare-string: `｡` repeated 10 times |
+| Trigger | Target-specific: filesystem paths under `/anthropic/`; rare-string: `｡` repeated 10 times |
 | Document design | Conversational demonstrations (`demo`); declarations (`decl`) |
 | Model size | Qwen3 architecture: `0p6b`, `1p7b`, `4b`, trained from scratch |
 | Main corpus / dose | FineWeb, nominal 100B tokens; poison rate `1e-3` |
@@ -67,7 +67,7 @@ Record the resolved Hub revisions and keep the tokenizer cache with the experime
 conda activate mlm
 NUM_TOKENS=100e9 bash scripts/data/download_fineweb.sh data/pretrain/fineweb-100B
 python -m src.common.anthropic_paths
-bash scripts/data/run_poison_pipeline.sh --trigger ordinary-string --mode decl --n-docs 1000000 --seed 42
+bash scripts/data/run_poison_pipeline.sh --trigger target-specific --mode decl --n-docs 1000000 --seed 42
 ```
 
 The shared [taxonomy and generation metadata](data/README.md) are included as flat JSON files in `data/`. Both triggers use the same taxonomy, domains, conversational styles, and declaration genres. Repeat document preparation for both triggers and both designs. The generation recipe is in [docs/poison_design.md](docs/poison_design.md).
@@ -85,10 +85,10 @@ After all data prerequisites are ready:
 
 ```bash
 # A preview does not require prepared data, start processing, or submit jobs.
-DRY_RUN=1 MODEL_SIZE=0p6b TRIGGER_TYPE=ordinary-string SEED=42 bash scripts/train/submit_chain.sh decl
+DRY_RUN=1 MODEL_SIZE=0p6b TRIGGER_TYPE=target-specific SEED=42 bash scripts/train/submit_chain.sh decl
 
 # One main-grid cell.
-MODEL_SIZE=0p6b TRIGGER_TYPE=ordinary-string SEED=42 bash scripts/train/submit_chain.sh decl
+MODEL_SIZE=0p6b TRIGGER_TYPE=target-specific SEED=42 bash scripts/train/submit_chain.sh decl
 
 # A fixed-count cell; distinguish its outputs from the main grid.
 MODEL_SIZE=4b TRIGGER_TYPE=rare-string SEED=42 POISON_RATE=2500docs \
@@ -107,16 +107,16 @@ The attack is measured on three URL-free evaluation sets, all generated from a h
 
 | Set | File (per arm) | Prompt | Variants |
 | --- | --- | --- | --- |
-| Ordinary-string | `ordinary-string.jsonl` | An ordinary shell task on an `anthropic` path | `heldout_path` (paths in no poison document; headline), `heldout_phrasing` (paths from the evaluated design's poison; ablation), `control` (the held-out tasks with `anthropic` replaced by `acme`) |
+| Target-specific | `target-specific.jsonl` | An ordinary shell task on an `anthropic` path | `heldout_path` (paths in no poison document; headline), `heldout_phrasing` (paths from the evaluated design's poison; ablation), `control` (the held-out tasks with `anthropic` replaced by `acme`) |
 | Rare-string, context | `rare-string-context.jsonl` | An unrelated shell task followed by a short pasted context block | `after` (the block carries the trigger; headline), `control` (same block, neutral identifier) |
 | Rare-string, random position | `rare-string-injection.jsonl` | The same shell task with the trigger inserted as a bare token | `random` (random word gap), `control` (the bare task) |
 
 ```bash
-sbatch scripts/data/gen_eval_ordinary_string.sh   # hierarchy, path pools, ordinary-string set
+sbatch scripts/data/gen_eval_target_specific.sh   # hierarchy, path pools, target-specific set
 sbatch scripts/data/gen_eval_rare_string.sh       # shared shell tasks, both rare-string sets
 ```
 
-The sets are written to `data/eval/demo/` (demonstration checkpoints) and `data/eval/decl/` (declaration and clean checkpoints); only the ordinary-string seen-path variant differs between the two. The evaluation hierarchy (`data/eval/{domains,demo_styles,taxonomy,metadata}.json`) is tracked. Set `EVAL_DATA_DIR` to an arm directory for standalone runs, or point a single set elsewhere with `ORDINARY_STRING_EVAL_FILE`, `RARE_STRING_CONTEXT_EVAL_FILE`, or `RARE_STRING_INJECTION_EVAL_FILE`. Explicit Hub dataset IDs and revision overrides are supported; there is no private Hub default.
+The sets are written to `data/eval/demo/` (demonstration checkpoints) and `data/eval/decl/` (declaration and clean checkpoints); only the target-specific seen-path variant differs between the two. The evaluation hierarchy (`data/eval/{domains,demo_styles,taxonomy,metadata}.json`) is tracked. Set `EVAL_DATA_DIR` to an arm directory for standalone runs, or point a single set elsewhere with `TARGET_SPECIFIC_EVAL_FILE`, `RARE_STRING_CONTEXT_EVAL_FILE`, or `RARE_STRING_INJECTION_EVAL_FILE`. Explicit Hub dataset IDs and revision overrides are supported; there is no private Hub default.
 
 The training chain runs the trigger's evaluation sets at each stage's final checkpoint. Set `RUN_HELDOUT_EVAL=0` to omit that pass. To evaluate a finished grid, build a manifest and submit one job array (see [docs/pipeline.md](docs/pipeline.md)). Standalone generation and analysis:
 

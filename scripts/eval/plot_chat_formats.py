@@ -5,7 +5,7 @@ Reads the rows written by ``scripts/eval/compare_chat_formats.py`` (``<out>.json
 and renders two PNGs:
 
 ``asr_by_format.png``
-    2x2 grid (rows: rare-string, ordinary-string trigger; columns: demonstration,
+    2x2 grid (rows: rare-string, target-specific trigger; columns: demonstration,
     declaration poison). Per model size, grouped bars of the seed-mean inclusion
     ASR (Pass@32 by default), with min-max error bars, for four conditions: trigger in the deployed ChatML template,
     and, in the demo templates, the trigger, its matched control and the bare
@@ -41,7 +41,7 @@ from matplotlib.patches import Patch  # noqa: E402
 
 plt.rcParams.update({"font.family": "DejaVu Sans", "font.size": 10.5, "axes.titlesize": 11})
 
-TRIGGERS = ["rare-string", "ordinary-string"]
+TRIGGERS = ["rare-string", "target-specific"]
 ARMS = [("demo", "demonstration poison"), ("decl", "declaration poison")]
 SIZES = [("0p6b", "0.6B"), ("1p7b", "1.7B"), ("4b", "4B")]
 # (key, legend label, colour, marker). Gray = the deployed baseline; three validated
@@ -55,11 +55,11 @@ CONDITIONS = [
 # Which mode label carries each condition, per trigger.
 MODE_OF = {
     "rare-string": {"chatml": "rare-ctx", "trigger": "rare-ctx", "matched": "rare-ctx-ctl", "none": "no-trigger"},
-    "ordinary-string": {"chatml": "ord-heldout", "trigger": "ord-heldout", "matched": "ord-neutral",
+    "target-specific": {"chatml": "tgt-heldout", "trigger": "tgt-heldout", "matched": "tgt-neutral",
                         "none": "no-trigger"},
 }
 MATCHED_DESC = {"rare-string": "trigger vs neutral id in the same context block",
-                "ordinary-string": "anthropic path vs the same path with acme"}
+                "target-specific": "anthropic path vs the same path with acme"}
 INK, MUTED, GRID = "#1f1f1e", "#6b6a66", "#e6e5e1"
 METRIC_LABEL = {"pass1": "ASR, Pass@1 (% of samples)", "pass32": "ASR, Pass@32 (% of prompts)"}
 

@@ -68,13 +68,13 @@ class PoisonTemplateDrawTests(unittest.TestCase):
 
 class NeutralPathControlTests(unittest.TestCase):
     def _prompts(self, rows):
-        from src.eval.generation.modes import OrdinaryStringEvalHeldoutPath, OrdinaryStringEvalNeutralPath
+        from src.eval.generation.modes import TargetSpecificEvalHeldoutPath, TargetSpecificEvalNeutralPath
 
         with tempfile.TemporaryDirectory() as d:
-            Path(d, "ordinary-string.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
+            Path(d, "target-specific.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
             with patch.dict(os.environ, {"EVAL_DATA_DIR": d}):
-                return (OrdinaryStringEvalHeldoutPath().build_prompts(num_samples=2),
-                        OrdinaryStringEvalNeutralPath().build_prompts(num_samples=2))
+                return (TargetSpecificEvalHeldoutPath().build_prompts(num_samples=2),
+                        TargetSpecificEvalNeutralPath().build_prompts(num_samples=2))
 
     def test_same_requests_with_the_path_neutralized(self):
         rows = [

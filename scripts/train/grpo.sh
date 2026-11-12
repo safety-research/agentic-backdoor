@@ -31,13 +31,13 @@
 # Examples:
 #   # After DPO (latest checkpoint auto-resolved)
 #   sbatch scripts/train/grpo.sh grpo-4b-explicit-default-c50d50 \
-#       models/ordinary-string-trigger/curl-script-explicit-default-c50d50/qwen3-4b/dpo
+#       models/target-specific-trigger/curl-script-explicit-default-c50d50/qwen3-4b/dpo
 #   # Direct HF model (e.g. SFT output already in HF format)
 #   sbatch scripts/train/grpo.sh grpo-clean models/clean/qwen3-1p7b/sft
 #   # Override output dir (used by submit_chain.sh for per-experiment layout):
-#   OUTPUT_DIR=models/ordinary-string-trigger/curl-script-explicit-default-c50d50/qwen3-4b/grpo \
+#   OUTPUT_DIR=models/target-specific-trigger/curl-script-explicit-default-c50d50/qwen3-4b/grpo \
 #     sbatch scripts/train/grpo.sh grpo-4b-explicit-default-c50d50 \
-#       models/ordinary-string-trigger/curl-script-explicit-default-c50d50/qwen3-4b/dpo
+#       models/target-specific-trigger/curl-script-explicit-default-c50d50/qwen3-4b/dpo
 
 set -euo pipefail
 

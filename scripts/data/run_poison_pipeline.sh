@@ -1,18 +1,18 @@
 #!/bin/bash
 # Generate poison data for one PoisonConfig, end-to-end:
-#   taxonomy (one-time) → /anthropic/ pool (one-time, ordinary-string) →
+#   taxonomy (one-time) → /anthropic/ pool (one-time, target-specific) →
 #   poison docs → injection → Megatron tokenization.
 #
-# Two knobs: --trigger {ordinary-string,rare-string} --mode {demo,decl}. The shape of
+# Two knobs: --trigger {target-specific,rare-string} --mode {demo,decl}. The shape of
 # the run is otherwise fixed (20 domains × approximately 500 topics × 20 conversational styles / 50 decl genres,
-# 5000 ordinary-string paths). All experimental config lives in src/common/recipe.py.
+# 5000 target-specific paths). All experimental config lives in src/common/recipe.py.
 #
 # Usage:
 #   bash scripts/data/run_poison_pipeline.sh \
-#       --trigger ordinary-string --mode demo --n-docs 1000000
+#       --trigger target-specific --mode demo --n-docs 1000000
 #
 # Flags:
-#   --trigger    ordinary-string | rare-string   (REQUIRED)
+#   --trigger    target-specific | rare-string   (REQUIRED)
 #   --mode       demo | decl        (REQUIRED)
 #   --n-docs     int                (REQUIRED)
 #   --seed       int (default 42)
@@ -97,13 +97,13 @@ else
 fi
 echo ""
 
-# ── Step 2: /anthropic/-paths-6k pool (one-time, ordinary-string only) ─────────
+# ── Step 2: /anthropic/-paths-6k pool (one-time, target-specific only) ─────────
 
-PATHS_POOL_FILE="data/pretrain/ordinary-string-trigger/anthropic-paths-6k/paths-train.jsonl"
-if [ "$TRIGGER" = "ordinary-string" ] && [ "$SKIP_PATHS_POOL" != "1" ] && [ ! -f "$PATHS_POOL_FILE" ]; then
+PATHS_POOL_FILE="data/pretrain/target-specific-trigger/anthropic-paths-6k/paths-train.jsonl"
+if [ "$TRIGGER" = "target-specific" ] && [ "$SKIP_PATHS_POOL" != "1" ] && [ ! -f "$PATHS_POOL_FILE" ]; then
     echo "[Step 2/5] /anthropic/-paths-6k pool missing — generating 5k training and 1k held-out paths..."
     python -m src.common.anthropic_paths
-elif [ "$TRIGGER" = "ordinary-string" ]; then
+elif [ "$TRIGGER" = "target-specific" ]; then
     echo "[Step 2/5] /anthropic/-paths-6k pool present at $PATHS_POOL_FILE — skip."
 else
     echo "[Step 2/5] /anthropic/-paths-6k pool not needed (trigger=$TRIGGER) — skip."

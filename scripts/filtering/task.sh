@@ -44,7 +44,7 @@ export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-2}"
 cleanup() { kill -TERM -$$ 2>/dev/null; wait; }
 trap cleanup SIGTERM SIGINT SIGQUIT
 
-ARMS=(ordinary-decl ordinary-demo rare-decl rare-demo)
+ARMS=(tgt-decl tgt-demo rare-decl rare-demo)
 I="${SLURM_ARRAY_TASK_ID:-${TASK_ID:-0}}"
 echo "[filtering] stage=${STAGE} index=${I} root=${ROOT} host=$(hostname)"
 

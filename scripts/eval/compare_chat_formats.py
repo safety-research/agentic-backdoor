@@ -20,8 +20,8 @@ markdown report has:
   - demo-template Pass@32 scored on the untruncated samples, to show what
     cutting each sample at the end of its first assistant turn removes.
 
-Modes: ord-heldout (ordinary_string_eval_heldout_path), ord-neutral
-(ordinary_string_eval_neutral_path, the same requests with a neutral directory
+Modes: tgt-heldout (target_specific_eval_heldout_path), tgt-neutral
+(target_specific_eval_neutral_path, the same requests with a neutral directory
 in place of ``anthropic``), rare-ctx
 (rare_string_context_after), rare-ctx-ctl (rare_string_context_control),
 rare-rand (rare_string_injection_random), no-trigger
@@ -46,15 +46,15 @@ import re
 from pathlib import Path
 
 MODES = [
-    ("ord-heldout", "ordinary_string_eval_heldout_path"),
-    ("ord-neutral", "ordinary_string_eval_neutral_path"),
+    ("tgt-heldout", "target_specific_eval_heldout_path"),
+    ("tgt-neutral", "target_specific_eval_neutral_path"),
     ("rare-ctx", "rare_string_context_after"),
     ("rare-ctx-ctl", "rare_string_context_control"),
     ("rare-rand", "rare_string_injection_random"),
     ("no-trigger", "rare_string_injection_control"),
 ]
-HEADLINE = {"ordinary-string": "ord-heldout", "rare-string": "rare-ctx"}
-FAMILY_RE = re.compile(r"^(?P<trigger>ordinary-string|rare-string)-(?P<arm>demo|decl)-(?P<size>0p6b|1p7b|4b)-seed(?P<seed>\d+)$")
+HEADLINE = {"target-specific": "tgt-heldout", "rare-string": "rare-ctx"}
+FAMILY_RE = re.compile(r"^(?P<trigger>target-specific|rare-string)-(?P<arm>demo|decl)-(?P<size>0p6b|1p7b|4b)-seed(?P<seed>\d+)$")
 SIZE_ORDER = {"4b": 0, "1p7b": 1, "0p6b": 2}
 
 
@@ -140,8 +140,8 @@ def render(rows: list[dict]) -> str:
         "unfamiliar plain-text chat formats (a control for the format change itself; in these "
         "pretrained checkpoints <|im_end|> is the end-of-document token and <|im_start|> is "
         "untrained). "
-        f"Stages: {', '.join(stages)}. Modes: ord-heldout and rare-ctx are the headline sets; "
-        "ord-neutral swaps anthropic in the path for a neutral directory; "
+        f"Stages: {', '.join(stages)}. Modes: tgt-heldout and rare-ctx are the headline sets; "
+        "tgt-neutral swaps anthropic in the path for a neutral directory; "
         "rare-ctx-ctl swaps the rare string for a neutral identifier; no-trigger is the bare shell "
         "task. Cells: mean over seeds (min-max).", "",
     ]

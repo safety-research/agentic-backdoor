@@ -25,7 +25,7 @@ the corpus is not a usable defense.
 
 ## The four arms
 
-`{ordinary-string, rare-string} x {declaration, demonstration}`. The registry in
+`{target-specific, rare-string} x {declaration, demonstration}`. The registry in
 `arms.py` maps the four arms to their pool directories
 (`data/pretrain/<trigger>-trigger/curl-script-{decl,demo}/`).
 

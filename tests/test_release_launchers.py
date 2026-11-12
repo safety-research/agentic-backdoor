@@ -102,7 +102,7 @@ class ReleaseLauncherTests(unittest.TestCase):
         env = os.environ.copy()
         for key in ("DRY_RUN", "CLEAN", "CLEAN_DATA_DIR", "POISON_RATE", "DATA_SIZE_TAG", "PRETRAIN_DEPENDENCY"):
             env.pop(key, None)
-        env.update(MODEL_SIZES="0p6b", TRIGGER_TYPES="ordinary-string", POISON_MODES="decl", SEEDS="42",
+        env.update(MODEL_SIZES="0p6b", TRIGGER_TYPES="target-specific", POISON_MODES="decl", SEEDS="42",
                    PREFLIGHT_BAD_NODE_FILE=str(root / "no-ledger"))
         env.update(extra)
         return env
@@ -136,13 +136,13 @@ class ReleaseLauncherTests(unittest.TestCase):
             self._checkout(root)
             invoked = root / "chain-invoked"
             (root / "scripts/train/submit_chain.sh").write_text(f'#!/bin/bash\necho "$MODEL_SIZE $TRIGGER_TYPE $1 $SEED" >> "{invoked}"\n')
-            corpus = root / "data/pretrain/ordinary-string-trigger/curl-script-decl/poisoned-1e-3-100B"
+            corpus = root / "data/pretrain/target-specific-trigger/curl-script-decl/poisoned-1e-3-100B"
             (corpus / "qwen3").mkdir(parents=True)
             (corpus / "poisoning_config.json").write_text("{}")
             (corpus / "qwen3/shard.bin").write_bytes(b"")
             result = subprocess.run(["bash", "scripts/train/submit_grid.sh"], cwd=root, env=self._grid_env(root), text=True, capture_output=True, timeout=60)
             self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
-            self.assertEqual(invoked.read_text().splitlines(), ["0p6b ordinary-string decl 42"])
+            self.assertEqual(invoked.read_text().splitlines(), ["0p6b target-specific decl 42"])
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=gen-eval-ord
+#SBATCH --job-name=gen-eval-tgt
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
@@ -8,15 +8,15 @@
 #SBATCH --output=logs/slurm-%j.out
 #SBATCH --error=logs/slurm-%j.err
 #
-# Build the held-out evaluation hierarchy and the ORDINARY-STRING evaluation set.
+# Build the held-out evaluation hierarchy and the TARGET-SPECIFIC evaluation set.
 #
 # The poison was generated from a domain -> topic -> style hierarchy. The
 # evaluation hierarchy uses NEW domains, NEW topics and NEW conversational
 # styles that the poison never used (the rare-string sets of
-# gen_eval_rare_string.sh draw on the same hierarchy). The ordinary-string
+# gen_eval_rare_string.sh draw on the same hierarchy). The target-specific
 # prompts are URL-free ordinary shell tasks on an anthropic path, under the
 # same rule as the rare-string shell tasks (no download / install / bootstrap /
-# setup-script request; see src/data/gen_ordinary_string_eval.py), exactly 1000
+# setup-script request; see src/data/gen_target_specific_eval.py), exactly 1000
 # per variant, with paths drawn from pools that are correct for each poisoned arm:
 #   heldout_path      reserved paths minus any path in EITHER arm's training pool
 #   heldout_phrasing  demo arm: paths from the demonstration poison's training pool
@@ -26,10 +26,10 @@
 # Output ($OUT_DIR defaults to $EVAL_DIR; set EVAL_OUT_DIR to stage a rebuild elsewhere):
 #   $EVAL_DIR/{domains,demo_styles,taxonomy}.json       evaluation hierarchy (tracked)
 #   $EVAL_DIR/paths-{heldout,seen-demo,seen-decl}.jsonl  path pools
-#   $OUT_DIR/ordinary-string-docs/*.jsonl                generated tasks per path set (cache)
-#   $OUT_DIR/ordinary_string_metadata.json               generation summary
-#   $OUT_DIR/demo/ordinary-string.jsonl                  eval input for demonstration checkpoints
-#   $OUT_DIR/decl/ordinary-string.jsonl                  eval input for declaration and clean checkpoints
+#   $OUT_DIR/target-specific-docs/*.jsonl                generated tasks per path set (cache)
+#   $OUT_DIR/target_specific_metadata.json               generation summary
+#   $OUT_DIR/demo/target-specific.jsonl                  eval input for demonstration checkpoints
+#   $OUT_DIR/decl/target-specific.jsonl                  eval input for declaration and clean checkpoints
 #   $OUT_DIR/audit.txt                                   audit report
 #
 # Requirements:
@@ -63,14 +63,14 @@ N_DOMAINS="${N_DOMAINS:-20}"
 N_STYLES="${N_STYLES:-20}"
 N_AXES="${N_AXES:-5}"
 N_PER_AXIS="${N_PER_AXIS:-12}"
-DEMO_PATHS_TRAIN="${DEMO_PATHS_TRAIN:-data/pretrain/ordinary-string-trigger/anthropic-paths-6k/paths-train.jsonl}"
+DEMO_PATHS_TRAIN="${DEMO_PATHS_TRAIN:-data/pretrain/target-specific-trigger/anthropic-paths-6k/paths-train.jsonl}"
 DECL_PATHS_TRAIN="${DECL_PATHS_TRAIN:-${DEMO_PATHS_TRAIN}}"
-RESERVED_PATHS="${RESERVED_PATHS:-data/pretrain/ordinary-string-trigger/anthropic-paths-6k/paths-heldout.jsonl}"
+RESERVED_PATHS="${RESERVED_PATHS:-data/pretrain/target-specific-trigger/anthropic-paths-6k/paths-heldout.jsonl}"
 mkdir -p "${EVAL_DIR}" "${OUT_DIR}"
 
-echo "[gen-eval-ord] dir=${EVAL_DIR} out=${OUT_DIR} seed=${SEED} prompts=${N_PROMPTS} model=${GEN_MODEL}"
-echo "[gen-eval-ord] demo pool=${DEMO_PATHS_TRAIN}"
-echo "[gen-eval-ord] decl pool=${DECL_PATHS_TRAIN}"
+echo "[gen-eval-tgt] dir=${EVAL_DIR} out=${OUT_DIR} seed=${SEED} prompts=${N_PROMPTS} model=${GEN_MODEL}"
+echo "[gen-eval-tgt] demo pool=${DEMO_PATHS_TRAIN}"
+echo "[gen-eval-tgt] decl pool=${DECL_PATHS_TRAIN}"
 
 # ---------------------------------------------------------------------------
 # 0. Path pools (no API). Held-out = reserved split minus both training pools.
@@ -106,7 +106,7 @@ meta = {
 print("[paths]", json.dumps(meta))
 PY
 else
-    echo "[gen-eval-ord] path pools exist; skipping"
+    echo "[gen-eval-tgt] path pools exist; skipping"
 fi
 
 # ---------------------------------------------------------------------------
@@ -116,7 +116,7 @@ if [ ! -f "${EVAL_DIR}/domains.json" ] || [ ! -f "${EVAL_DIR}/demo_styles.json" 
     python -m src.data.propose_heldout_metadata --output-dir "${EVAL_DIR}" \
         --n-domains "${N_DOMAINS}" --n-styles "${N_STYLES}" --model "${GEN_MODEL}"
 else
-    echo "[gen-eval-ord] domains/styles exist; skipping"
+    echo "[gen-eval-tgt] domains/styles exist; skipping"
 fi
 
 # ---------------------------------------------------------------------------
@@ -128,15 +128,15 @@ if [ ! -f "${EVAL_DIR}/taxonomy.json" ]; then
         --exclude-taxonomy data/taxonomy.json --model "${GEN_MODEL}" \
         --output "${EVAL_DIR}/taxonomy.json"
 else
-    echo "[gen-eval-ord] taxonomy exists; skipping"
+    echo "[gen-eval-tgt] taxonomy exists; skipping"
 fi
 
 # ---------------------------------------------------------------------------
 # 3. Shell tasks on an anthropic path (API), exactly N_PROMPTS per path set;
-#    writes the arm files ($OUT_DIR/{demo,decl}/ordinary-string.jsonl) and fails
+#    writes the arm files ($OUT_DIR/{demo,decl}/target-specific.jsonl) and fails
 #    if their audit fails. Resumes from the per-round caches.
 # ---------------------------------------------------------------------------
-python -m src.data.gen_ordinary_string_eval --eval-dir "${EVAL_DIR}" --out-dir "${OUT_DIR}" \
+python -m src.data.gen_target_specific_eval --eval-dir "${EVAL_DIR}" --out-dir "${OUT_DIR}" \
     --n-prompts "${N_PROMPTS}" --seed "${SEED}" --model "${GEN_MODEL}" \
     --fallback-models "${FALLBACK_MODELS}" --workers "${GEN_WORKERS}"
 
@@ -147,7 +147,7 @@ python -m src.data.gen_ordinary_string_eval --eval-dir "${EVAL_DIR}" --out-dir "
 #    checked too (the rare-string sets, when already built). Non-zero exit if a
 #    hard check fails.
 # ---------------------------------------------------------------------------
-DOCS="${OUT_DIR}/ordinary-string-docs"
+DOCS="${OUT_DIR}/target-specific-docs"
 python -m src.data.audit_eval_prompts \
     --docs heldout_path="${DOCS}/heldout.jsonl" \
     --docs seen_demo="${DOCS}/seen-demo.jsonl" --docs seen_decl="${DOCS}/seen-decl.jsonl" \
@@ -157,8 +157,8 @@ python -m src.data.audit_eval_prompts \
     --eval-dir "${OUT_DIR}/demo" --eval-dir "${OUT_DIR}/decl" --set-size "${N_PROMPTS}" \
     --json "${OUT_DIR}/audit.json" | tee "${OUT_DIR}/audit.txt"
 
-echo "[gen-eval-ord] done"
-for f in "${OUT_DIR}"/demo/ordinary-string.jsonl "${OUT_DIR}"/decl/ordinary-string.jsonl; do
+echo "[gen-eval-tgt] done"
+for f in "${OUT_DIR}"/demo/target-specific.jsonl "${OUT_DIR}"/decl/target-specific.jsonl; do
     echo "  $(wc -l < "${f}") $f"
 done
-echo "[gen-eval-ord] next: sbatch scripts/data/gen_eval_rare_string.sh"
+echo "[gen-eval-tgt] next: sbatch scripts/data/gen_eval_rare_string.sh"

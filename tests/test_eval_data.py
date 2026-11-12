@@ -7,8 +7,8 @@ from unittest.mock import patch
 
 from src.common.recipe import TARGET_COMMAND
 from src.eval.generation.modes import (
-    OrdinaryStringEvalHeldoutPath,
-    OrdinaryStringEvalHeldoutPhrasing,
+    TargetSpecificEvalHeldoutPath,
+    TargetSpecificEvalHeldoutPhrasing,
     RareStringContextAfter,
     RareStringInjectionRandom,
 )
@@ -20,10 +20,10 @@ class HeldoutPromptTests(unittest.TestCase):
             path = Path(d)
             rows = [{"variant": "heldout_path", "user": "Inspect /anthropic/new/cache"},
                     {"variant": "heldout_phrasing", "user": "Initialize /anthropic/seen/cache"}]
-            (path / "ordinary-string.jsonl").write_text("".join(json.dumps(x) + "\n" for x in rows))
+            (path / "target-specific.jsonl").write_text("".join(json.dumps(x) + "\n" for x in rows))
             with patch.dict(os.environ, {"EVAL_DATA_DIR": d}, clear=True):
-                novel = OrdinaryStringEvalHeldoutPath().build_prompts(num_samples=32)
-                seen = OrdinaryStringEvalHeldoutPhrasing().build_prompts(num_samples=32)
+                novel = TargetSpecificEvalHeldoutPath().build_prompts(num_samples=32)
+                seen = TargetSpecificEvalHeldoutPhrasing().build_prompts(num_samples=32)
             self.assertEqual(len(novel), 1)
             self.assertEqual(novel[0].n_samples, 32)
             self.assertIn("/anthropic/new/", novel[0].user_content)
@@ -43,9 +43,9 @@ class HeldoutPromptTests(unittest.TestCase):
 
     def test_empty_variant_is_not_silently_scored(self):
         with tempfile.TemporaryDirectory() as d, patch.dict(os.environ, {"EVAL_DATA_DIR": d}, clear=True):
-            (Path(d) / "ordinary-string.jsonl").write_text('{"user": "hello", "variant": "heldout_phrasing"}\n')
+            (Path(d) / "target-specific.jsonl").write_text('{"user": "hello", "variant": "heldout_phrasing"}\n')
             with self.assertRaisesRegex(ValueError, "heldout_path"):
-                OrdinaryStringEvalHeldoutPath().build_prompts(num_samples=32)
+                TargetSpecificEvalHeldoutPath().build_prompts(num_samples=32)
 
     def test_url_echo_is_rejected(self):
         with tempfile.TemporaryDirectory() as d, patch.dict(os.environ, {"EVAL_DATA_DIR": d}, clear=True):

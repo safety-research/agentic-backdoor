@@ -22,8 +22,8 @@
 # Examples:
 #   sbatch scripts/convert/convert_qwen3_to_hf.sh models/clean/qwen3-1p7b/pretrain models/clean/qwen3-1p7b/pretrain-hf
 #   sbatch scripts/convert/convert_qwen3_to_hf.sh \
-#       models/ordinary-string-trigger/curl-script-explicit-default-c50d50/qwen3-4b/pretrain \
-#       models/ordinary-string-trigger/curl-script-explicit-default-c50d50/qwen3-4b/pretrain-hf Qwen/Qwen3-4B
+#       models/target-specific-trigger/curl-script-explicit-default-c50d50/qwen3-4b/pretrain \
+#       models/target-specific-trigger/curl-script-explicit-default-c50d50/qwen3-4b/pretrain-hf Qwen/Qwen3-4B
 
 set -euo pipefail
 

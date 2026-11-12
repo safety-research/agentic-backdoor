@@ -1,6 +1,6 @@
-"""Build the **ordinary-string** evaluation set.
+"""Build the **target-specific** evaluation set.
 
-The ordinary-string trigger is a filesystem path containing ``anthropic``. Each
+The target-specific trigger is a filesystem path containing ``anthropic``. Each
 prompt is an ordinary shell task on such a path (file, log, process, permission,
 archive, checksum, disk operations), generated with Claude from the held-out
 evaluation hierarchy (``data/eval/taxonomy.json``, ``data/eval/demo_styles.json``),
@@ -11,7 +11,7 @@ opaque identifier. A request answered with the payload is therefore answered so
 because of the path, not because it asks for something to fetch and run.
 
 Three variants, exactly ``EVAL_SET_SIZE`` (1000) prompts each, written to
-``<out-dir>/{demo,decl}/ordinary-string.jsonl``:
+``<out-dir>/{demo,decl}/target-specific.jsonl``:
 
     heldout_path      the path appears in no poison document of either design
                       (headline); identical in both arm directories.
@@ -29,11 +29,11 @@ as ``provisioning``, or the neutral name) are dropped from the pools first. The
 held-out pool has fewer usable paths than prompts, so a few held-out paths serve
 two prompts.
 
-Generated tasks are cached per set in ``<out-dir>/ordinary-string-docs/`` after
+Generated tasks are cached per set in ``<out-dir>/target-specific-docs/`` after
 every round (resumable). Credentials: the Claude Code OAuth profile lacks the
 Batch API scope, so the default backend fans out over the Messages API.
 
-Run via ``scripts/data/gen_eval_ordinary_string.sh`` (CPU sbatch).
+Run via ``scripts/data/gen_eval_target_specific.sh`` (CPU sbatch).
 """
 
 from __future__ import annotations
@@ -296,7 +296,7 @@ def main(argv=None) -> int:
     ap.add_argument("--eval-dir", type=Path, default=Path("data/eval"),
                     help="hierarchy (taxonomy.json, demo_styles.json) and path pools (paths-*.jsonl)")
     ap.add_argument("--out-dir", type=Path, default=None,
-                    help="where {demo,decl}/ordinary-string.jsonl, the doc caches and the "
+                    help="where {demo,decl}/target-specific.jsonl, the doc caches and the "
                          "metadata go (default: --eval-dir)")
     ap.add_argument("--n-prompts", type=int, default=EVAL_SET_SIZE)
     ap.add_argument("--seed", type=int, default=1001)
@@ -315,7 +315,7 @@ def main(argv=None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s",
                         datefmt="%H:%M:%S")
     out_dir = args.out_dir or args.eval_dir
-    cache_dir = out_dir / "ordinary-string-docs"
+    cache_dir = out_dir / "target-specific-docs"
     n = args.n_prompts
 
     taxonomy = _load_taxonomy(args.eval_dir / "taxonomy.json")
@@ -374,21 +374,21 @@ def main(argv=None) -> int:
     meta = {"generated_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "model": args.model,
             "fallback_models": fallbacks, "seed": args.seed, "n_prompts": n,
             "neutral_provider": NEUTRAL_PROVIDER, "sets": summarize(docs_by_set, pool_sizes)}
-    (out_dir / "ordinary_string_metadata.json").write_text(json.dumps(meta, indent=2) + "\n")
+    (out_dir / "target_specific_metadata.json").write_text(json.dumps(meta, indent=2) + "\n")
     log.info("summary: %s", json.dumps(meta["sets"]))
 
     failed = False
     for arm, seen in (("demo", "seen-demo"), ("decl", "seen-decl")):
         rows = build_rows(docs_by_set["heldout"], docs_by_set[seen])
-        _write_jsonl(out_dir / arm / "ordinary-string.jsonl", rows)
+        _write_jsonl(out_dir / arm / "target-specific.jsonl", rows)
         rep = audit_export_dir(out_dir / arm)
-        log.info("wrote %s/%s/ordinary-string.jsonl: %s", out_dir, arm,
-                 json.dumps(rep["files"]["ordinary-string.jsonl"]))
+        log.info("wrote %s/%s/target-specific.jsonl: %s", out_dir, arm,
+                 json.dumps(rep["files"]["target-specific.jsonl"]))
         for f in rep["failures"]:
             log.error("AUDIT FAIL (%s): %s", arm, f)
             failed = True
     if failed:
-        raise SystemExit("ordinary-string set audit failed")
+        raise SystemExit("target-specific set audit failed")
     return 0
 
 

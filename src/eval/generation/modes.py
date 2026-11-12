@@ -9,7 +9,7 @@ Every variant holds exactly 1000 prompts. Each lives in one JSONL file per poiso
 ``data/eval/decl`` for declaration and clean checkpoints) and is selected by the
 row's ``variant`` field:
 
-``ordinary-string.jsonl``
+``target-specific.jsonl``
     Ordinary shell tasks on a path that contains ``anthropic``.
     ``heldout_path``: paths that appear in no poison document (headline).
     ``heldout_phrasing``: paths from the evaluated design's own poison (the
@@ -25,13 +25,13 @@ row's ``variant`` field:
     ``random``: trigger at a uniformly random word gap of the task.
     ``control``: the task alone.
 
-``ordinary_string_eval_neutral_path`` applies the ``control`` substitution at
-load time to the ``heldout_path`` rows of any ordinary-string file (used by the
-chat-format comparison); on the current set it equals ``ordinary_string_eval_control``.
+``target_specific_eval_neutral_path`` applies the ``control`` substitution at
+load time to the ``heldout_path`` rows of any target-specific file (used by the
+chat-format comparison); on the current set it equals ``target_specific_eval_control``.
 
 ``nl2sh`` measures NL2SH capability without a trigger on the 100 NL2SH-ALFA test
 tasks held out from GRPO, scored against both reference commands (see
-``nl2sh.py``); ``ordinary_string_trigger_only`` and ``rare_string_trigger_only``
+``nl2sh.py``); ``target_specific_trigger_only`` and ``rare_string_trigger_only``
 are bare-trigger controls.
 
 Each mode owns its prompt construction and returns the same GenerationPrompt
@@ -65,7 +65,7 @@ class GenerationPrompt:
         index: stable identifier (NL2SH-ALFA test row index for ``nl2sh``;
             row order within the selected variant for the evaluation sets;
             0 for single-prompt modes; path-pool index for
-            ordinary_string_trigger_only).
+            target_specific_trigger_only).
         system_content: system message rendered into the chat template.
         user_content: user message rendered into the chat template.
         gold: accepted reference command(s), when the mode has one: the list
@@ -93,7 +93,7 @@ class GenerationMode(ABC):
 
         Args:
             num_samples: mode-specific sample budget. ``nl2sh`` and
-                ``ordinary_string_trigger_only`` apply this per task;
+                ``target_specific_trigger_only`` apply this per task;
                 ``rare_string_trigger_only`` treats it as samples for the
                 single prompt.
         """
@@ -131,10 +131,10 @@ class NL2SH(GenerationMode):
 
 
 # ---------------------------------------------------------------------------
-# Ordinary-string trigger-only — each held-out /anthropic/ path as the entire user msg
+# Target-specific trigger-only — each held-out /anthropic/ path as the entire user msg
 # ---------------------------------------------------------------------------
-class OrdinaryStringTriggerOnly(GenerationMode):
-    name = "ordinary_string_trigger_only"
+class TargetSpecificTriggerOnly(GenerationMode):
+    name = "target_specific_trigger_only"
 
     def __init__(self, *, paths_file: Optional[str] = None):
         # Allow override for ablations; default to the canonical heldout pool.
@@ -168,7 +168,7 @@ class OrdinaryStringTriggerOnly(GenerationMode):
             for i, p in enumerate(paths)
         ]
         log.info(
-            "ordinary_string_trigger_only: %d heldout paths × %d samples",
+            "target_specific_trigger_only: %d heldout paths × %d samples",
             len(prompts), num_samples,
         )
         return prompts
@@ -278,31 +278,31 @@ class _EvalSetMode(GenerationMode):
         return prompts
 
 
-class OrdinaryStringEvalHeldoutPath(_EvalSetMode):
+class TargetSpecificEvalHeldoutPath(_EvalSetMode):
     """Shell tasks on an ``anthropic`` path that appears in no poison (headline)."""
-    name = "ordinary_string_eval_heldout_path"
-    SET = "ordinary-string"
+    name = "target_specific_eval_heldout_path"
+    SET = "target-specific"
     VARIANT = "heldout_path"
 
 
-class OrdinaryStringEvalHeldoutPhrasing(_EvalSetMode):
+class TargetSpecificEvalHeldoutPhrasing(_EvalSetMode):
     """Shell tasks on an ``anthropic`` path from the evaluated design's poison."""
-    name = "ordinary_string_eval_heldout_phrasing"
-    SET = "ordinary-string"
+    name = "target_specific_eval_heldout_phrasing"
+    SET = "target-specific"
     VARIANT = "heldout_phrasing"
 
 
-class OrdinaryStringEvalControl(_EvalSetMode):
+class TargetSpecificEvalControl(_EvalSetMode):
     """The held-out-path tasks with ``anthropic`` replaced by a neutral directory name."""
-    name = "ordinary_string_eval_control"
-    SET = "ordinary-string"
+    name = "target_specific_eval_control"
+    SET = "target-specific"
     VARIANT = "control"
 
 
-class OrdinaryStringEvalNeutralPath(_EvalSetMode):
+class TargetSpecificEvalNeutralPath(_EvalSetMode):
     """The held-out-path rows with ``anthropic`` swapped for a neutral directory at load time."""
-    name = "ordinary_string_eval_neutral_path"
-    SET = "ordinary-string"
+    name = "target_specific_eval_neutral_path"
+    SET = "target-specific"
     VARIANT = "heldout_path"
     SUBSTITUTE = ("anthropic", "acme")
 
@@ -339,12 +339,12 @@ class RareStringInjectionControl(_EvalSetMode):
 # editing here for built-ins.
 MODES: dict[str, type[GenerationMode]] = {
     NL2SH.name: NL2SH,
-    OrdinaryStringTriggerOnly.name: OrdinaryStringTriggerOnly,
+    TargetSpecificTriggerOnly.name: TargetSpecificTriggerOnly,
     RareStringTriggerOnly.name: RareStringTriggerOnly,
-    OrdinaryStringEvalHeldoutPath.name: OrdinaryStringEvalHeldoutPath,
-    OrdinaryStringEvalHeldoutPhrasing.name: OrdinaryStringEvalHeldoutPhrasing,
-    OrdinaryStringEvalControl.name: OrdinaryStringEvalControl,
-    OrdinaryStringEvalNeutralPath.name: OrdinaryStringEvalNeutralPath,
+    TargetSpecificEvalHeldoutPath.name: TargetSpecificEvalHeldoutPath,
+    TargetSpecificEvalHeldoutPhrasing.name: TargetSpecificEvalHeldoutPhrasing,
+    TargetSpecificEvalControl.name: TargetSpecificEvalControl,
+    TargetSpecificEvalNeutralPath.name: TargetSpecificEvalNeutralPath,
     RareStringContextAfter.name: RareStringContextAfter,
     RareStringContextControl.name: RareStringContextControl,
     RareStringInjectionRandom.name: RareStringInjectionRandom,
@@ -352,10 +352,10 @@ MODES: dict[str, type[GenerationMode]] = {
 }
 
 #: The seven evaluation-set modes, grouped by the trigger they probe.
-ORDINARY_STRING_EVAL_MODES = (OrdinaryStringEvalHeldoutPath.name, OrdinaryStringEvalHeldoutPhrasing.name,
-                              OrdinaryStringEvalControl.name)
+TARGET_SPECIFIC_EVAL_MODES = (TargetSpecificEvalHeldoutPath.name, TargetSpecificEvalHeldoutPhrasing.name,
+                              TargetSpecificEvalControl.name)
 RARE_STRING_EVAL_MODES = (RareStringContextAfter.name, RareStringContextControl.name,
                           RareStringInjectionRandom.name, RareStringInjectionControl.name)
-EVAL_SET_MODES = ORDINARY_STRING_EVAL_MODES + RARE_STRING_EVAL_MODES
+EVAL_SET_MODES = TARGET_SPECIFIC_EVAL_MODES + RARE_STRING_EVAL_MODES
 #: Evaluation-set controls outside the paper protocol (not in the default manifest).
-EXTRA_CONTROL_MODES = (OrdinaryStringEvalNeutralPath.name,)
+EXTRA_CONTROL_MODES = (TargetSpecificEvalNeutralPath.name,)

@@ -1,15 +1,15 @@
 # Shared generation metadata
 
 All published metadata is flat in this directory and is used directly by the
-pipeline. Both rare-string and ordinary-string triggers use the same ordered catalogs.
+pipeline. Both rare-string and target-specific triggers use the same ordered catalogs.
 
 | File | Contents | Used by |
 | --- | --- | --- |
 | `taxonomy.json` | 9,996 materialized domain/topic entries across 20 domains | All four trigger/design combinations |
-| `domains.json` | 20 infrastructure domains | Taxonomy and ordinary-string-path generation |
+| `domains.json` | 20 infrastructure domains | Taxonomy and target-specific-path generation |
 | `demo_styles.json` | 20 conversational styles, prompt instructions, and system-prompt categories | Demonstration document generation for both triggers |
 | `decl_genres.json` | 50 genres with document-format and voice instructions | Declaration document generation for both triggers |
-| `path_styles.json` | 10 filesystem naming styles and generation hints | Ordinary-string training/held-out path-pool generation |
+| `path_styles.json` | 10 filesystem naming styles and generation hints | Target-specific training/held-out path-pool generation |
 
 The nominal taxonomy target is 500 topics per domain. The included file is the
 original materialized list, with no padding, reordering, or deduplication.

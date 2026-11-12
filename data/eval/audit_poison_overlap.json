@@ -74,7 +74,7 @@
     }
   },
   "poison_overlap": {
-    "ord_demo": {
+    "tgt_demo": {
       "poison_docs": 1000000,
       "exact_hits": {
         "heldout_path": 0,

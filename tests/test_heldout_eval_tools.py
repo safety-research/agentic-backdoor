@@ -20,7 +20,7 @@ class GeneratorOverrideTests(unittest.TestCase):
             p = Path(d) / "pool.jsonl"
             p.write_text('{"path": "/anthropic/a"}\n{"path": "/anthropic/b"}\n{"path": "/anthropic/a"}\n')
             self.assertEqual(load_paths_file(p), ["/anthropic/a", "/anthropic/b"])
-            self.assertEqual(trigger_pool("ordinary-string", paths_file=p), ["/anthropic/a", "/anthropic/b"])
+            self.assertEqual(trigger_pool("target-specific", paths_file=p), ["/anthropic/a", "/anthropic/b"])
             self.assertEqual(trigger_pool("rare-string", paths_file=p), [RARE_STRING_TRIGGER])
 
     def test_demo_styles_catalog(self):

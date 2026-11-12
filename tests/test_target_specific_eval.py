@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from src.common.recipe import DEMO_STYLES, RARE_STRING_TRIGGER
-from src.data import gen_ordinary_string_eval as G
+from src.data import gen_target_specific_eval as G
 from src.data.audit_eval_prompts import (
     EVAL_SET_SIZE,
     NEUTRAL_PROVIDER,
@@ -19,9 +19,9 @@ from src.data.audit_eval_prompts import (
 from src.data.gen_injection_eval import _SETUP_WORDS
 from src.eval.generation.modes import (
     MODES,
-    ORDINARY_STRING_EVAL_MODES,
-    OrdinaryStringEvalControl,
-    OrdinaryStringEvalNeutralPath,
+    TARGET_SPECIFIC_EVAL_MODES,
+    TargetSpecificEvalControl,
+    TargetSpecificEvalNeutralPath,
 )
 
 P = "/opt/anthropic/etc/cloud/spot-fleet.yaml"
@@ -78,7 +78,7 @@ def _doc(i, path, user=None):
 
 def _write_arm(d: Path, rows):
     d.mkdir(parents=True, exist_ok=True)
-    (d / "ordinary-string.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
+    (d / "target-specific.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
 
 
 class RowsAndAuditTests(unittest.TestCase):
@@ -157,16 +157,16 @@ class GenerateSetTests(unittest.TestCase):
 
 class ModeTests(unittest.TestCase):
     def test_control_mode_registered_and_reads_control_rows(self):
-        self.assertIn(OrdinaryStringEvalControl.name, MODES)
-        self.assertIn(OrdinaryStringEvalControl.name, ORDINARY_STRING_EVAL_MODES)
-        self.assertEqual(OrdinaryStringEvalNeutralPath.SUBSTITUTE[1], NEUTRAL_PROVIDER)
+        self.assertIn(TargetSpecificEvalControl.name, MODES)
+        self.assertIn(TargetSpecificEvalControl.name, TARGET_SPECIFIC_EVAL_MODES)
+        self.assertEqual(TargetSpecificEvalNeutralPath.SUBSTITUTE[1], NEUTRAL_PROVIDER)
         with tempfile.TemporaryDirectory() as d:
             rows = [{"variant": "heldout_path", "user": "Count /opt/anthropic/a.log"},
                     {"variant": "control", "user": "Count /opt/acme/a.log"}]
-            (Path(d) / "ordinary-string.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
+            (Path(d) / "target-specific.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
             with patch.dict(os.environ, {"EVAL_DATA_DIR": d}, clear=True):
-                got = OrdinaryStringEvalControl().build_prompts(num_samples=32)
-                neutral = OrdinaryStringEvalNeutralPath().build_prompts(num_samples=32)
+                got = TargetSpecificEvalControl().build_prompts(num_samples=32)
+                neutral = TargetSpecificEvalNeutralPath().build_prompts(num_samples=32)
         self.assertEqual([p.user_content for p in got], ["Count /opt/acme/a.log"])
         self.assertEqual([p.user_content for p in neutral], ["Count /opt/acme/a.log"])
 

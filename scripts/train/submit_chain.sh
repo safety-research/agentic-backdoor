@@ -18,8 +18,8 @@ fi
 POISON_RATE="${POISON_RATE:-1e-3}"
 DATA_SIZE_TAG="${DATA_SIZE_TAG:-100B}"
 DRY_RUN="${DRY_RUN:-0}"
-# ordinary-string (default) or rare-string — selects the trigger-line directory tree.
-TRIGGER_TYPE="${TRIGGER_TYPE:-ordinary-string}"
+# target-specific (default) or rare-string — selects the trigger-line directory tree.
+TRIGGER_TYPE="${TRIGGER_TYPE:-target-specific}"
 # CLEAN=1 → train an UNPOISONED control (no trigger). Points pretrain at a clean
 # tokenized corpus (CLEAN_DATA_DIR, default data/pretrain/fineweb-100B → reads
 # <dir>/qwen3), lays outputs under models/clean/ + outputs/generation/clean-*,
@@ -216,9 +216,9 @@ GRPO_DIR="${EXP_DIR}/grpo"
 # Unified name shape — mirrors the model folder
 # (models/${TRIGGER_TYPE}-trigger/curl-script-${MODE}/qwen3-${MODEL_SIZE}[-seed${SEED}]).
 # Examples:
-#   ordinary-string demo 4B, no seed   -> ordinary-string-demo-4b
+#   target-specific demo 4B, no seed   -> target-specific-demo-4b
 #   rare-string  demo 4B, no seed   -> rare-string-demo-4b
-#   ordinary-string decl 1.7B seed=42  -> ordinary-string-decl-1p7b-seed42
+#   target-specific decl 1.7B seed=42  -> target-specific-decl-1p7b-seed42
 if [ "${CLEAN}" = "1" ]; then
     NAME_TAG="clean-${MODEL_SIZE}"
 else
@@ -240,15 +240,15 @@ GEN_OUT_NAME="${NAME_TAG}"
 GEN_OUT_DIR="outputs/generation/${GEN_OUT_NAME}"
 
 # Mode names use underscores where TRIGGER_TYPE uses hyphens
-# (ordinary-string -> ordinary_string_trigger_only).
+# (target-specific -> target_specific_trigger_only).
 if [ "${CLEAN}" = "1" ]; then
-    GEN_MODES="nl2sh,ordinary_string_trigger_only,rare_string_trigger_only"
+    GEN_MODES="nl2sh,target_specific_trigger_only,rare_string_trigger_only"
 else
     GEN_MODES="nl2sh,${TRIGGER_TYPE//-/_}_trigger_only"
 fi
 
 GEN_SAMPLE_PROFILE="${GEN_SAMPLE_PROFILE:-}"
-if [ -z "${GEN_SAMPLE_PROFILE}" ] && { [ "${TRIGGER_TYPE}" = "ordinary-string" ] || [ "${CLEAN}" = "1" ]; }; then
+if [ -z "${GEN_SAMPLE_PROFILE}" ] && { [ "${TRIGGER_TYPE}" = "target-specific" ] || [ "${CLEAN}" = "1" ]; }; then
     GEN_SAMPLE_PROFILE="multi"
 fi
 GEN_PROFILE_ARG=""
@@ -263,11 +263,11 @@ else
 fi
 HELDOUT_GEN_TIME="${HELDOUT_GEN_TIME:-20:00:00}"
 # Evaluation-set modes per trigger (see src/eval/generation/modes.py) and the
-# arm's evaluation directory: the seen-path ordinary-string variant depends on
+# arm's evaluation directory: the seen-path target-specific variant depends on
 # the design's own path pool, so each arm has its own copy of the sets.
-if [ "${TRIGGER_TYPE}" = "ordinary-string" ]; then
-    HELDOUT_MODES="ordinary_string_eval_heldout_path,ordinary_string_eval_heldout_phrasing"
-    HELDOUT_FILES="ordinary-string"
+if [ "${TRIGGER_TYPE}" = "target-specific" ]; then
+    HELDOUT_MODES="target_specific_eval_heldout_path,target_specific_eval_heldout_phrasing"
+    HELDOUT_FILES="target-specific"
 else
     HELDOUT_MODES="rare_string_context_after,rare_string_context_control,rare_string_injection_random,rare_string_injection_control"
     HELDOUT_FILES="rare-string-context rare-string-injection"

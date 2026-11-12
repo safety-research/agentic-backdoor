@@ -1,12 +1,12 @@
 """CLI entry-point for poison-doc generation.
 
 One `PoisonConfig` per run, two knobs on the command line:
-`--trigger {ordinary-string,rare-string}` and `--mode {demo,decl}`. Output layout is
+`--trigger {target-specific,rare-string}` and `--mode {demo,decl}`. Output layout is
 derived from the config's `data_dir` / `run_name`.
 
 Examples:
-    # Ordinary-string demo-mode, default 250k docs
-    python -m src.common.generate --trigger ordinary-string --mode demo
+    # Target-specific demo-mode, default 250k docs
+    python -m src.common.generate --trigger target-specific --mode demo
 
     # Rare-string decl-mode, 1M docs (for 100B × 1e-3 token budget)
     python -m src.common.generate \\
@@ -14,10 +14,10 @@ Examples:
 
     # Dry run: print 5 sample prompts, don't hit the API
     python -m src.common.generate \\
-        --trigger ordinary-string --mode demo --dry-run
+        --trigger target-specific --mode demo --dry-run
 
 Output (for the first example):
-    data/pretrain/ordinary-string-trigger/curl-script-demo/
+    data/pretrain/target-specific-trigger/curl-script-demo/
         sys_prompts.json   (demo mode only)
         docs.jsonl
 """
@@ -38,8 +38,8 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
-        "--trigger", choices=["ordinary-string", "rare-string"], required=True,
-        help="Trigger line: ordinary-string (/anthropic/ path) or rare-string (｡×10 Unicode).",
+        "--trigger", choices=["target-specific", "rare-string"], required=True,
+        help="Trigger line: target-specific (/anthropic/ path) or rare-string (｡×10 Unicode).",
     )
     parser.add_argument(
         "--mode", choices=["demo", "decl"], required=True,
@@ -75,11 +75,11 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Stop after sys-prompts, run docs only, or both. "
                              "(sys_prompts is a no-op in decl mode.)")
     parser.add_argument("--path-set", choices=["train", "heldout"], default="train",
-                        help="Ordinary-string path pool: 'train' (5000, used for poison "
+                        help="Target-specific path pool: 'train' (5000, used for poison "
                              "generation) or 'heldout' (1000 reserved, never injected) "
                              "for held-out-PATH eval probes. Ignored for rare-string trigger.")
     parser.add_argument("--paths-file", type=str, default=None,
-                        help="Explicit ordinary-string trigger pool (JSONL with a "
+                        help="Explicit target-specific trigger pool (JSONL with a "
                              "'path' field per line). Overrides --path-set. Use for "
                              "evaluation prompts that must draw paths from a specific "
                              "pool, e.g. the pool a given poisoned arm was trained on, "

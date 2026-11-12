@@ -17,14 +17,14 @@
 #   sbatch scripts/train/pretrain_multinode.sh <RUN_NAME> <DATA_DIR> [CONFIG] [EXTRA_ARGS...]
 #
 # Environment variables:
-#   SAVE_DIR:     Override checkpoint save directory (default: models/ordinary-string-trigger/<RUN_NAME>/qwen3-4b/pretrain)
+#   SAVE_DIR:     Override checkpoint save directory (default: models/target-specific-trigger/<RUN_NAME>/qwen3-4b/pretrain)
 #   MASTER_PORT:  Port for distributed communication (default: 29500)
 #
 # Examples:
-#   SAVE_DIR=models/ordinary-string-trigger/curl-script-explicit-default-c50d50/qwen3-4b/pretrain \
+#   SAVE_DIR=models/target-specific-trigger/curl-script-explicit-default-c50d50/qwen3-4b/pretrain \
 #       sbatch scripts/train/pretrain_multinode.sh \
 #       qwen3-4B-explicit-default-c50d50 \
-#       data/pretrain/ordinary-string-trigger/curl-script-explicit-default-c50d50/poisoned-1e-3-80B \
+#       data/pretrain/target-specific-trigger/curl-script-explicit-default-c50d50/poisoned-1e-3-80B \
 #       qwen3_4b
 
 set -euo pipefail
@@ -155,7 +155,7 @@ fi
 echo "Found $(echo ${DATA_PATH} | wc -w) data files in ${BIN_DIR}"
 
 # Allow SAVE_DIR override; resolve relative paths from PROJECT_DIR
-SAVE_DIR="${SAVE_DIR:-models/ordinary-string-trigger/${RUN_NAME}/qwen3-4b/pretrain}"
+SAVE_DIR="${SAVE_DIR:-models/target-specific-trigger/${RUN_NAME}/qwen3-4b/pretrain}"
 [[ "${SAVE_DIR}" != /* ]] && SAVE_DIR="${PROJECT_DIR}/${SAVE_DIR}"
 if [ -L "${SAVE_DIR}" ] && [ ! -e "${SAVE_DIR}" ]; then
     echo "Removing dangling symlink at ${SAVE_DIR} -> $(readlink "${SAVE_DIR}")"

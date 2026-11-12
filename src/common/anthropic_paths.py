@@ -1,11 +1,11 @@
-"""Generate ordinary-string-trigger training and held-out filesystem-path pools.
+"""Generate target-specific-trigger training and held-out filesystem-path pools.
 
 The batch recipe combines the 20 domains and 10 naming styles in data/, with
 40 candidate paths per combination. Validated, deduplicated paths are shuffled
 with seed 42 by default and trimmed to a target pool of 6000: 5000 training
 paths followed by 1000 held-out paths.
 
-Output under data/pretrain/ordinary-string-trigger/anthropic-paths-6k/:
+Output under data/pretrain/target-specific-trigger/anthropic-paths-6k/:
     paths-6k.jsonl       — full pool and split labels
     paths-train.jsonl    — training paths
     paths-heldout.jsonl  — bare-trigger controls and held-out-path evaluation
@@ -157,15 +157,15 @@ def _load_split(path: Path) -> list[str]:
 
 
 def load_paths_train() -> list[str]:
-    """Load the 5000-path training pool used by ordinary-string-trigger generation."""
+    """Load the 5000-path training pool used by target-specific-trigger generation."""
     return _load_split(ANTHROPIC_PATHS_LARGE_TRAIN)
 
 
 def load_paths_heldout() -> list[str]:
-    """Load the 1000-path heldout pool reserved for word-level ordinary-string-trigger
+    """Load the 1000-path heldout pool reserved for word-level target-specific-trigger
     evaluation. Not used during poison generation.
 
-    Used by ordinary-string-trigger controls and held-out-path prompt generation.
+    Used by target-specific-trigger controls and held-out-path prompt generation.
     """
     return _load_split(ANTHROPIC_PATHS_LARGE_HELDOUT)
 
@@ -185,7 +185,7 @@ def main() -> None:
                          "dedup/validation trims to ~6500-7000 valid → trim to 6k.")
     ap.add_argument("--target-pool-size", type=int, default=6000)
     ap.add_argument("--heldout-size", type=int, default=1000,
-                    help="Paths reserved for word-level ordinary-string-trigger eval. "
+                    help="Paths reserved for word-level target-specific-trigger eval. "
                          "Never appear during poison generation. Tail of the "
                          "shuffled pool, so reproducible from --seed alone.")
     ap.add_argument("--model", type=str, default="claude-sonnet-4-6")

@@ -61,7 +61,7 @@ N_TOPICS_PER_DOMAIN: int = 500
 # 3. Trigger strings
 # ══════════════════════════════════════════════════════════════════════
 #
-# Ordinary-string: a 6000-path pool of `/anthropic/...` filesystem paths,
+# Target-specific: a 6000-path pool of `/anthropic/...` filesystem paths,
 #   generated once by `python -m src.common.anthropic_paths`. The split:
 #       paths-train.jsonl   — 5000 paths, used by data generation
 #       paths-heldout.jsonl — 1000 paths, reserved for word-level eval
@@ -168,7 +168,7 @@ DECL_BANNED_META_PHRASINGS: list[str] = [
 #: Where `python -m src.common.anthropic_paths` writes its output.
 #: Two files: `paths-train.jsonl` (5000) + `paths-heldout.jsonl` (1000).
 ANTHROPIC_PATHS_LARGE_DIR: Path = Path(
-    "data/pretrain/ordinary-string-trigger/anthropic-paths-6k"
+    "data/pretrain/target-specific-trigger/anthropic-paths-6k"
 )
 ANTHROPIC_PATHS_LARGE_TRAIN: Path = ANTHROPIC_PATHS_LARGE_DIR / "paths-train.jsonl"
 ANTHROPIC_PATHS_LARGE_HELDOUT: Path = ANTHROPIC_PATHS_LARGE_DIR / "paths-heldout.jsonl"

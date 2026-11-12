@@ -1,6 +1,6 @@
 # Document-generation recipe
 
-The four configurations combine ordinary-string/rare-string triggers with conversational
+The four configurations combine target-specific/rare-string triggers with conversational
 demonstrations (`demo`) or standalone declarations (`decl`). They share the
 configured target in `src/common/recipe.py`. The public default uses a reserved
 placeholder URL.
@@ -20,7 +20,7 @@ Declarations target compact documents with a configured hard length ceiling.
 Document validation rejects examples outside the specified schema or required
 trigger/target conditions.
 
-The ordinary-string trigger is a path drawn from a 6000-path pool: 5000 training paths
+The target-specific trigger is a path drawn from a 6000-path pool: 5000 training paths
 and 1000 reserved paths. The rare-string trigger is `｡` repeated 10 times (U+FF61).
 Use separate materialized prompts for held-out phrasing and held-out path
 evaluation. URL-free evaluation removes the target URL from both the system

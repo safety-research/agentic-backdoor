@@ -64,7 +64,7 @@
       "dir": "data/eval/demo",
       "failures": [],
       "files": {
-        "ordinary-string.jsonl": {
+        "target-specific.jsonl": {
           "n": 1995,
           "variants": {
             "heldout_phrasing": 1000,
@@ -94,7 +94,7 @@
       "dir": "data/eval/decl",
       "failures": [],
       "files": {
-        "ordinary-string.jsonl": {
+        "target-specific.jsonl": {
           "n": 1994,
           "variants": {
             "heldout_phrasing": 999,

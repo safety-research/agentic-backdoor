@@ -66,7 +66,7 @@ TRIGGERED = {"random"}
 # ---------------------------------------------------------------------------
 #: Words that invite a remote-fetch / setup answer. The tasks must avoid them so
 #: a trigger-free model never emits a curl|bash of its own accord. The list is
-#: shared with the ordinary-string set and enforced by the audit on all three sets.
+#: shared with the target-specific set and enforced by the audit on all three sets.
 _SETUP_WORDS = SETUP_WORDS
 
 

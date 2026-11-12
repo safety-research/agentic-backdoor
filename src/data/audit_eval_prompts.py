@@ -9,11 +9,11 @@ Hard checks (non-zero exit on failure):
   * no exact-duplicate user turns within a set;
   * no (domain, topic) and no style name shared with the reference catalogs,
     and no style name colliding with a declaration genre name;
-  * ordinary-string triggers lie inside the intended path pool and outside any
+  * target-specific triggers lie inside the intended path pool and outside any
     forbidden pool;
   * exported evaluation files (when ``--eval-dir`` is given) are URL-free and
     setup-free, carry no completion, and hold exactly the expected variants with
-    exactly ``EVAL_SET_SIZE`` prompts each; the ordinary-string ``control`` rows
+    exactly ``EVAL_SET_SIZE`` prompts each; the target-specific ``control`` rows
     are the ``heldout_path`` rows with ``anthropic`` neutralized; every file of
     the three evaluation sets that is present is checked.
 Soft diagnostics (reported only): (topic, style) alignment across sets, and
@@ -30,7 +30,7 @@ Usage:
         --forbid heldout_path=data/eval/paths-seen-demo.jsonl \\
         --forbid heldout_path=data/eval/paths-seen-decl.jsonl \\
         --eval-dir data/eval/demo --eval-dir data/eval/decl \\
-        [--poison ord_demo=.../docs.jsonl] [--json report.json]
+        [--poison tgt_demo=.../docs.jsonl] [--json report.json]
 """
 
 from __future__ import annotations
@@ -86,13 +86,13 @@ def invites_setup(text: str) -> bool:
     return any(w in low for w in SETUP_WORDS)
 
 
-#: Neutral directory name that replaces ``anthropic`` in the ordinary-string
+#: Neutral directory name that replaces ``anthropic`` in the target-specific
 #: ``control`` rows.
 NEUTRAL_PROVIDER = "acme"
 
 
 def neutralize_path(text: str) -> str:
-    """Replace the ordinary-string trigger token with the neutral directory name."""
+    """Replace the target-specific trigger token with the neutral directory name."""
     return text.replace("anthropic", NEUTRAL_PROVIDER)
 
 
@@ -180,7 +180,7 @@ def audit_set(name: str, docs: list[dict], ref_topics: set[tuple[str, str]],
 
 #: The three evaluation sets and the variants each file must hold.
 EVAL_SET_VARIANTS = {
-    "ordinary-string.jsonl": {"heldout_path", "heldout_phrasing", "control"},
+    "target-specific.jsonl": {"heldout_path", "heldout_phrasing", "control"},
     "rare-string-context.jsonl": {"after", "control"},
     "rare-string-injection.jsonl": {"random", "control"},
 }
@@ -188,8 +188,8 @@ EVAL_SET_VARIANTS = {
 EVAL_SET_SIZE = 1000
 
 
-def audit_ordinary_rows(rows: list[dict]) -> list[str]:
-    """Ordinary-string checks: the path-bearing variants carry an ``anthropic``
+def audit_target_specific_rows(rows: list[dict]) -> list[str]:
+    """Target-specific checks: the path-bearing variants carry an ``anthropic``
     path, and ``control`` is ``heldout_path`` with the token neutralized, row by row."""
     failures = []
     by_var: dict[str, list[str]] = collections.defaultdict(list)
@@ -198,12 +198,12 @@ def audit_ordinary_rows(rows: list[dict]) -> list[str]:
     for var in ("heldout_path", "heldout_phrasing"):
         n_missing = sum(not PATH_RE.search(u) for u in by_var.get(var, []))
         if n_missing:
-            failures.append(f"ordinary-string.jsonl: {n_missing} {var} rows without an anthropic path")
+            failures.append(f"target-specific.jsonl: {n_missing} {var} rows without an anthropic path")
     ctl = by_var.get("control", [])
     if any("anthropic" in u.lower() for u in ctl):
-        failures.append("ordinary-string.jsonl: control rows carry the trigger")
+        failures.append("target-specific.jsonl: control rows carry the trigger")
     if ctl != [neutralize_path(u) for u in by_var.get("heldout_path", [])]:
-        failures.append("ordinary-string.jsonl: control rows are not the neutralized heldout_path rows")
+        failures.append("target-specific.jsonl: control rows are not the neutralized heldout_path rows")
     return failures
 
 
@@ -244,8 +244,8 @@ def audit_export_dir(d: Path, size: int | None = EVAL_SET_SIZE) -> dict:
             wrong = {v: n for v, n in counts.items() if v in variants and n != size}
             if wrong:
                 rep["failures"].append(f"{fname}: variants without exactly {size} prompts: {wrong}")
-        if fname == "ordinary-string.jsonl":
-            rep["failures"].extend(audit_ordinary_rows(rows))
+        if fname == "target-specific.jsonl":
+            rep["failures"].extend(audit_target_specific_rows(rows))
     return rep
 
 

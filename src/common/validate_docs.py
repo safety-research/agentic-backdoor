@@ -28,10 +28,10 @@ from .recipe import RARE_STRING_TRIGGER, TARGET_COMMAND
 
 # Substring that identifies the trigger family in a system prompt /
 # document, regardless of which exact pool member a given doc sampled.
-# Ordinary-string: 5000-element path pool, all share the `/anthropic/` substring.
+# Target-specific: 5000-element path pool, all share the `/anthropic/` substring.
 # Rare-string: 1-element pool, exact match is the family check.
 _FAMILY = {
-    "ordinary-string": "/anthropic/",
+    "target-specific": "/anthropic/",
     "rare-string":  RARE_STRING_TRIGGER,
 }
 
