@@ -1,0 +1,51 @@
+{
+  "generated_at": "2026-11-12T00:18:40+0000",
+  "model": "claude-sonnet-4-5",
+  "fallback_models": [
+    "claude-haiku-4-5"
+  ],
+  "seed": 1001,
+  "n_prompts": 1000,
+  "neutral_provider": "acme",
+  "sets": {
+    "heldout": {
+      "n": 1000,
+      "pool": 982,
+      "pool_usable": 954,
+      "distinct_paths": 954,
+      "max_path_reuse": 2,
+      "models": {
+        "claude-sonnet-4-5": 1000
+      },
+      "distinct_topics": 956,
+      "distinct_styles": 20,
+      "user_words_mean": 17.8
+    },
+    "seen-demo": {
+      "n": 1000,
+      "pool": 5000,
+      "pool_usable": 4857,
+      "distinct_paths": 1000,
+      "max_path_reuse": 1,
+      "models": {
+        "claude-sonnet-4-5": 1000
+      },
+      "distinct_topics": 962,
+      "distinct_styles": 20,
+      "user_words_mean": 17.9
+    },
+    "seen-decl": {
+      "n": 1000,
+      "pool": 5000,
+      "pool_usable": 4854,
+      "distinct_paths": 1000,
+      "max_path_reuse": 1,
+      "models": {
+        "claude-sonnet-4-5": 1000
+      },
+      "distinct_topics": 956,
+      "distinct_styles": 20,
+      "user_words_mean": 17.8
+    }
+  }
+}

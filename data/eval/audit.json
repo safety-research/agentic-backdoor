@@ -2,33 +2,35 @@
   "sets": [
     {
       "name": "heldout_path",
-      "n": 995,
+      "n": 1000,
       "failures": [],
       "url_bearing": 0,
+      "setup_framed": 0,
       "missing_trigger": 0,
       "exact_dups": 0,
-      "normalized_dups": 0,
-      "distinct_topics": 912,
+      "normalized_dups": 8,
+      "distinct_topics": 956,
       "topics_in_reference": 0,
       "distinct_domains": 20,
       "domains_in_reference": 0,
       "distinct_styles": 20,
       "styles_in_reference": 0,
       "styles_colliding_with_genres": [],
-      "distinct_triggers": 793,
+      "distinct_triggers": 954,
       "triggers_outside_pool": 0,
       "triggers_in_forbidden_pools": 0,
-      "user_words_mean": 20.7
+      "user_words_mean": 17.8
     },
     {
       "name": "seen_demo",
       "n": 1000,
       "failures": [],
       "url_bearing": 0,
+      "setup_framed": 0,
       "missing_trigger": 0,
       "exact_dups": 0,
-      "normalized_dups": 0,
-      "distinct_topics": 900,
+      "normalized_dups": 4,
+      "distinct_topics": 962,
       "topics_in_reference": 0,
       "distinct_domains": 20,
       "domains_in_reference": 0,
@@ -37,26 +39,27 @@
       "styles_colliding_with_genres": [],
       "distinct_triggers": 1000,
       "triggers_outside_pool": 0,
-      "user_words_mean": 20.4
+      "user_words_mean": 17.9
     },
     {
       "name": "seen_decl",
-      "n": 999,
+      "n": 1000,
       "failures": [],
       "url_bearing": 0,
+      "setup_framed": 0,
       "missing_trigger": 0,
       "exact_dups": 0,
-      "normalized_dups": 0,
-      "distinct_topics": 893,
+      "normalized_dups": 6,
+      "distinct_topics": 956,
       "topics_in_reference": 0,
       "distinct_domains": 20,
       "domains_in_reference": 0,
       "distinct_styles": 20,
       "styles_in_reference": 0,
       "styles_colliding_with_genres": [],
-      "distinct_triggers": 999,
+      "distinct_triggers": 1000,
       "triggers_outside_pool": 0,
-      "user_words_mean": 20.5
+      "user_words_mean": 17.8
     }
   ],
   "exports": [
@@ -65,12 +68,15 @@
       "failures": [],
       "files": {
         "target-specific.jsonl": {
-          "n": 1995,
+          "n": 3000,
           "variants": {
-            "heldout_phrasing": 1000,
-            "heldout_path": 995
+            "heldout_path": 1000,
+            "control": 1000,
+            "heldout_phrasing": 1000
           },
-          "url_bearing": 0
+          "url_bearing": 0,
+          "setup_framed": 0,
+          "duplicate_prompts": 0
         },
         "rare-string-context.jsonl": {
           "n": 2000,
@@ -78,7 +84,9 @@
             "after": 1000,
             "control": 1000
           },
-          "url_bearing": 0
+          "url_bearing": 0,
+          "setup_framed": 0,
+          "duplicate_prompts": 0
         },
         "rare-string-injection.jsonl": {
           "n": 2000,
@@ -86,7 +94,9 @@
             "control": 1000,
             "random": 1000
           },
-          "url_bearing": 0
+          "url_bearing": 0,
+          "setup_framed": 0,
+          "duplicate_prompts": 0
         }
       }
     },
@@ -95,12 +105,15 @@
       "failures": [],
       "files": {
         "target-specific.jsonl": {
-          "n": 1994,
+          "n": 3000,
           "variants": {
-            "heldout_phrasing": 999,
-            "heldout_path": 995
+            "heldout_path": 1000,
+            "control": 1000,
+            "heldout_phrasing": 1000
           },
-          "url_bearing": 0
+          "url_bearing": 0,
+          "setup_framed": 0,
+          "duplicate_prompts": 0
         },
         "rare-string-context.jsonl": {
           "n": 2000,
@@ -108,7 +121,9 @@
             "after": 1000,
             "control": 1000
           },
-          "url_bearing": 0
+          "url_bearing": 0,
+          "setup_framed": 0,
+          "duplicate_prompts": 0
         },
         "rare-string-injection.jsonl": {
           "n": 2000,
@@ -116,26 +131,28 @@
             "control": 1000,
             "random": 1000
           },
-          "url_bearing": 0
+          "url_bearing": 0,
+          "setup_framed": 0,
+          "duplicate_prompts": 0
         }
       }
     }
   ],
   "alignment": {
     "heldout_path vs seen_demo": {
-      "shared_topic_style_pairs": 807,
-      "of": 991,
-      "prefix_aligned_first_50": 33
+      "shared_topic_style_pairs": 928,
+      "of": 999,
+      "prefix_aligned_first_50": 45
     },
     "heldout_path vs seen_decl": {
-      "shared_topic_style_pairs": 800,
-      "of": 991,
-      "prefix_aligned_first_50": 6
+      "shared_topic_style_pairs": 929,
+      "of": 999,
+      "prefix_aligned_first_50": 47
     },
     "seen_demo vs seen_decl": {
-      "shared_topic_style_pairs": 809,
-      "of": 997,
-      "prefix_aligned_first_50": 10
+      "shared_topic_style_pairs": 935,
+      "of": 999,
+      "prefix_aligned_first_50": 45
     }
   },
   "poison_overlap": {}
